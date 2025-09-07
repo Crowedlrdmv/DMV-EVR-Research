@@ -1,0 +1,114 @@
+Looks very close—nice! I’d give this a ✅ with two small fixes and three “nice-to-have” tighten-ups so the agent doesn’t stumble later.
+
+Must-fix (before you click Approve)
+
+1. Knex migrations path (robust resolution)
+
+
+
+In src/db/knexfile.cjs you set:
+
+migrations: { directory: './migrations' }
+
+Knex sometimes resolves that relative to the process CWD, not the knexfile’s folder. Make it absolute so kickoff and CLI runs are reliable:
+
+// src/db/knexfile.cjs
+const path = require('path');
+require('dotenv').config();
+
+const sqliteFilename = (process.env.DATABASE_URL || 'file:./data/app.sqlite').replace('file:', '');
+
+module.exports = {
+  development: {
+    client: 'sqlite3',
+    connection: { filename: sqliteFilename },
+    useNullAsDefault: true,
+    migrations: {
+      directory: path.join(__dirname, 'migrations')   // <- absolute
+    }
+  },
+  production: {
+    client: 'pg',
+    connection: process.env.DATABASE_URL,
+    migrations: {
+      directory: path.join(__dirname, 'migrations')   // <- absolute
+    }
+  }
+};
+
+
+2. Playwright stub file missing
+
+
+
+You listed Playwright in devDeps but there’s no tests/playwright.spec.mjs. Add a tiny one so test:e2e can be enabled later:
+
+// tests/playwright.spec.mjs
+import { chromium } from 'playwright';
+
+const PORT = process.env.PORT || 3000;
+
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  await page.goto(`http://localhost:${PORT}/chart-demo.html`, { waitUntil: 'domcontentloaded' });
+  const title = await page.title();
+  console.log('Page title:', title);
+  await browser.close();
+})();
+
+And add a script (optional now):
+
+"test:e2e": "node tests/playwright.spec.mjs"
+
+
+Good-to-have (quick hardening)
+
+.gitignore (prevent leaking env/db):
+
+node_modules/
+.env
+data/
+*.sqlite
+*.sqlite-journal
+
+Request validation for ingestion (avoid junk rows). Later you can add AJV; for now a quick guard in ingestion.mjs:
+
+const ok = r =>
+  r && typeof r.driverName==='string' &&
+  typeof r.licenseNumber==='string' &&
+  typeof r.status==='string' &&
+  !Number.isNaN(Date.parse(r.expirationDate));
+
+const bad = records.filter(r => !ok(r));
+if (bad.length) return res.status(400).json({ error: 'Invalid record shape', badCount: bad.length });
+
+Helmet + stricter CORS (lock down in prod):
+
+// src/app.mjs
+import helmet from 'helmet';
+app.use(helmet());
+// app.use(cors({ origin: ['https://your-domain.example'], methods: ['GET','POST'] }));
+
+
+Sanity pass on your current build
+
+Dual-DB switch: DB_CLIENT=prisma path uses PrismaClient with mapped columns—matches the Knex schema. ✅
+
+Kickoff: creates data/, runs Prisma deploy only when DB_CLIENT=prisma, otherwise Knex migrate. ✅
+
+Auth: /ingestion/upload requires Authorization: Bearer dev-secret-token. ✅
+
+Analytics: /analytics/summary computes { total, compliant, nonCompliant }. ✅
+
+Export: /export/xlsx streams workbook with expected columns. ✅
+
+Verify: /verify/records returns { summary: { total, passed, failed }, verificationMethod }. ✅
+
+Chart demo: pulls live data from /analytics/summary. ✅
+
+Docs + scripts: present and coherent. ✅
+
+
+If you apply the two must-fixes above (migrations path + Playwright stub), I’m confident this will run cleanly for the Replit agent and future contributors.
+
