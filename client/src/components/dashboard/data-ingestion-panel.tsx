@@ -16,7 +16,7 @@ export default function DataIngestionPanel() {
 
   const uploadMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/ingestion/compliance", data);
+      const response = await apiRequest("POST", "/api/ingestion/compliance", data, bearerToken);
       return response.json();
     },
     onSuccess: () => {

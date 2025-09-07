@@ -22,6 +22,18 @@ export default function VerificationPanel() {
   const { data: ingestionStatus } = useQuery({
     queryKey: ["/api/ingestion/status"],
     retry: false, // Don't retry on auth failures
+    queryFn: async () => {
+      const response = await fetch("/api/ingestion/status", {
+        headers: {
+          "Authorization": "Bearer sk-1234567890abcdef" // Default token for testing
+        }
+      });
+      if (!response.ok) {
+        if (response.status === 401) return null; // Return null for auth failures
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    }
   });
 
   const verifyMutation = useMutation({
