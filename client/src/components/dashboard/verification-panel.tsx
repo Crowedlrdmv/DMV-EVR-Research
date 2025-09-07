@@ -77,19 +77,19 @@ export default function VerificationPanel() {
               <div className="flex items-center justify-between p-3 bg-muted rounded-md">
                 <span className="text-sm text-muted-foreground">Queue Length</span>
                 <span className="font-medium text-foreground" data-testid="queue-length">
-                  {ingestionStatus?.queueLength || 0}
+                  {(ingestionStatus as any)?.queueLength || 0}
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-muted rounded-md">
                 <span className="text-sm text-muted-foreground">Processing Time</span>
                 <span className="font-medium text-foreground" data-testid="processing-time">
-                  {ingestionStatus?.avgProcessingTime || "< 1s"}
+                  {(ingestionStatus as any)?.avgProcessingTime || "< 1s"}
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-muted rounded-md">
                 <span className="text-sm text-muted-foreground">Success Rate</span>
                 <span className="font-medium text-green-600" data-testid="success-rate">
-                  {ingestionStatus?.successRate || "100%"}
+                  {(ingestionStatus as any)?.successRate || "100%"}
                 </span>
               </div>
             </div>
@@ -122,8 +122,8 @@ export default function VerificationPanel() {
           <div className="space-y-4">
             <h4 className="font-medium text-foreground">Recent Verifications</h4>
             <div className="space-y-2 max-h-32 overflow-y-auto">
-              {recentVerifications && recentVerifications.length > 0 ? (
-                recentVerifications.map((verification: any, index: number) => (
+              {recentVerifications && (recentVerifications as any)?.length > 0 ? (
+                (recentVerifications as any)?.map((verification: any, index: number) => (
                   <div 
                     key={index} 
                     className="flex items-center justify-between p-2 bg-muted rounded text-sm"

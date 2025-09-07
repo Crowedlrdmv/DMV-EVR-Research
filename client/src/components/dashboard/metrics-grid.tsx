@@ -9,7 +9,7 @@ export default function MetricsGrid() {
   const metrics = [
     {
       title: "Total Records",
-      value: summary?.metrics?.totalRecords || 0,
+      value: (summary as any)?.metrics?.totalRecords || 0,
       icon: "fas fa-database",
       iconBg: "bg-primary/10",
       iconColor: "text-primary",
@@ -19,7 +19,7 @@ export default function MetricsGrid() {
     },
     {
       title: "Compliance Rate", 
-      value: summary?.metrics?.complianceRate || "100%",
+      value: (summary as any)?.metrics?.complianceRate || "100%",
       icon: "fas fa-check-circle",
       iconBg: "bg-green-100",
       iconColor: "text-green-600",
@@ -29,7 +29,7 @@ export default function MetricsGrid() {
     },
     {
       title: "Failed Verifications",
-      value: summary?.metrics?.failedVerifications || 0,
+      value: (summary as any)?.metrics?.failedVerifications || 0,
       icon: "fas fa-exclamation-triangle", 
       iconBg: "bg-red-100",
       iconColor: "text-red-600",
@@ -39,7 +39,7 @@ export default function MetricsGrid() {
     },
     {
       title: "API Calls Today",
-      value: summary?.metrics?.apiCalls || 0,
+      value: (summary as any)?.metrics?.apiCalls || 0,
       icon: "fas fa-exchange-alt",
       iconBg: "bg-blue-100", 
       iconColor: "text-blue-600",

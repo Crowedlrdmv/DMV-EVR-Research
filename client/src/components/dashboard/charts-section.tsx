@@ -31,10 +31,10 @@ export default function ChartsSection() {
         const config: ChartConfiguration = {
           type: "line",
           data: {
-            labels: trends.compliance?.labels || [],
+            labels: (trends as any)?.compliance?.labels || [],
             datasets: [{
               label: "Compliance Rate",
-              data: trends.compliance?.data || [],
+              data: (trends as any)?.compliance?.data || [],
               borderColor: "hsl(221.2, 83.2%, 53.3%)",
               backgroundColor: "hsla(221.2, 83.2%, 53.3%, 0.1)",
               tension: 0.4,
@@ -80,10 +80,10 @@ export default function ChartsSection() {
         const config: ChartConfiguration = {
           type: "bar",
           data: {
-            labels: trends.volume?.labels || [],
+            labels: (trends as any)?.volume?.labels || [],
             datasets: [{
               label: "Records Ingested",
-              data: trends.volume?.data || [],
+              data: (trends as any)?.volume?.data || [],
               backgroundColor: "hsl(173, 58%, 39%)",
               borderColor: "hsl(173, 58%, 39%)",
               borderWidth: 1,

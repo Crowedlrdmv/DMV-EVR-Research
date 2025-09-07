@@ -62,7 +62,7 @@ export default function ExportPanel() {
     }));
   };
 
-  const recordCount = summary?.metrics?.totalRecords || 0;
+  const recordCount = (summary as any)?.metrics?.totalRecords || 0;
   const estimatedSize = recordCount < 100 ? "< 1 KB" : 
                       recordCount < 1000 ? "< 10 KB" : 
                       recordCount < 10000 ? "< 100 KB" : "< 1 MB";

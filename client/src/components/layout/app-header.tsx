@@ -66,9 +66,9 @@ export default function AppHeader() {
 
             {/* Health Status */}
             <div className="flex items-center space-x-2" data-testid="health-status">
-              <i className={`fas fa-heartbeat ${healthStatus?.status === 'healthy' ? 'text-green-500' : 'text-red-500'}`}></i>
+              <i className={`fas fa-heartbeat ${(healthStatus as any)?.status === 'healthy' ? 'text-green-500' : 'text-red-500'}`}></i>
               <span className="text-sm text-muted-foreground">
-                {healthStatus?.status === 'healthy' ? 'System Healthy' : 'System Issues'}
+                {(healthStatus as any)?.status === 'healthy' ? 'System Healthy' : 'System Issues'}
               </span>
             </div>
           </div>

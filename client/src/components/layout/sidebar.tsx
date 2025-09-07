@@ -66,7 +66,7 @@ export default function Sidebar() {
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Records</span>
               <span className="text-foreground font-medium" data-testid="record-count">
-                {summary?.metrics?.totalRecords || 0}
+                {(summary as any)?.metrics?.totalRecords || 0}
               </span>
             </div>
           </div>
