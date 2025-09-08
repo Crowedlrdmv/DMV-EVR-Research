@@ -60,12 +60,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/analytics/summary", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
     try {
       const metrics = await storage.getComplianceMetrics();
+      const { researchService } = await import("./services/research/researchService");
+      const researchStats = await researchService.getResearchStats();
+      
       res.json({
         metrics: {
           totalRecords: metrics.totalRecords,
           complianceRate: `${metrics.complianceRate}%`,
           failedVerifications: metrics.failedVerifications,
-          apiCalls: 0 // This would be tracked separately in a real implementation
+          apiCalls: 0, // This would be tracked separately in a real implementation
+          statePrograms: researchStats.totalPrograms,
+          researchArtifacts: researchStats.totalArtifacts,
+          statesCovered: Object.keys(researchStats.programsByState).length
+        },
+        research: {
+          programsByState: researchStats.programsByState,
+          totalPrograms: researchStats.totalPrograms,
+          totalArtifacts: researchStats.totalArtifacts
         },
         authenticated: req.isAuthenticated
       });
