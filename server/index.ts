@@ -37,6 +37,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize queue system
+  try {
+    const { initializeQueue } = await import("./queue/connection");
+    await initializeQueue();
+    log("✓ Queue system initialized");
+  } catch (error) {
+    log("✗ Queue initialization failed:", String(error));
+  }
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

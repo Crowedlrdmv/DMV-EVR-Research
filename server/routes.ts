@@ -272,12 +272,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // State research endpoints
+  // State research endpoints (existing)
   app.put("/api/states/:code", requireBearerToken, upsertStateResultsHandler);
   app.post("/api/states/:code/research", requireBearerToken, researchStateHandler);
   app.get("/api/states/:code", getStateHandler);
   app.get("/api/states/:code/sources", getStateSourcesHandler);
   app.get("/api/states", listStatesHandler);
+
+  // Research pipeline endpoints
+  app.post("/api/research/run", requireBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { researchService } = await import("./services/research/researchService");
+      const { states, dataTypes, depth = 'summary', since } = req.body;
+      
+      if (!states || !Array.isArray(states) || states.length === 0) {
+        return res.status(400).json({ error: "States array is required" });
+      }
+      
+      if (!dataTypes || !Array.isArray(dataTypes) || dataTypes.length === 0) {
+        return res.status(400).json({ error: "DataTypes array is required" });
+      }
+
+      const jobIds = await researchService.startResearchJob({
+        states: states.map((s: string) => s.toUpperCase()),
+        dataTypes,
+        depth,
+        since
+      });
+
+      res.status(201).json({ jobIds, message: `Started ${jobIds.length} research jobs` });
+    } catch (error) {
+      console.error("Error starting research job:", error);
+      if (error instanceof Error && error.message.includes('already running')) {
+        return res.status(409).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to start research job" });
+    }
+  });
+
+  app.get("/api/research/jobs", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { researchService } = await import("./services/research/researchService");
+      const { status, state } = req.query;
+      
+      const jobs = await researchService.getJobs({
+        status: status as string,
+        state: state as string
+      });
+
+      res.json({ jobs });
+    } catch (error) {
+      console.error("Error fetching research jobs:", error);
+      res.status(500).json({ error: "Failed to fetch research jobs" });
+    }
+  });
+
+  app.get("/api/research/jobs/:id", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { researchService } = await import("./services/research/researchService");
+      const job = await researchService.getJob(req.params.id);
+      
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      res.json({ job });
+    } catch (error) {
+      console.error("Error fetching research job:", error);
+      res.status(500).json({ error: "Failed to fetch research job" });
+    }
+  });
+
+  app.get("/api/research/results", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { researchService } = await import("./services/research/researchService");
+      const { state, since } = req.query;
+      
+      const results = await researchService.getResearchResults({
+        state: state as string,
+        since: since as string
+      });
+
+      res.json({ results });
+    } catch (error) {
+      console.error("Error fetching research results:", error);
+      res.status(500).json({ error: "Failed to fetch research results" });
+    }
+  });
+
+  app.get("/api/research/deltas", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { researchService } = await import("./services/research/researchService");
+      const { state, since } = req.query;
+      
+      const deltas = await researchService.getResearchDeltas({
+        state: state as string,
+        since: since as string
+      });
+
+      res.json({ deltas });
+    } catch (error) {
+      console.error("Error fetching research deltas:", error);
+      res.status(500).json({ error: "Failed to fetch research deltas" });
+    }
+  });
+
+  app.get("/api/research/sources", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      // For MVP, return dummy adapter registry
+      const sources = {
+        "CA": [
+          { id: "ca-dmv-rules", name: "CA DMV Rules", supports: ["rules", "inspections"], url: "https://dmv.ca.gov/rules" },
+          { id: "ca-emissions", name: "CA Emissions Program", supports: ["emissions"], url: "https://dmv.ca.gov/emissions" }
+        ],
+        "TX": [
+          { id: "tx-dmv-programs", name: "TX DMV Programs", supports: ["rules", "inspections"], url: "https://dmv.tx.gov/programs" },
+          { id: "tx-fees", name: "TX Fee Schedule", supports: ["forms"], url: "https://dmv.tx.gov/fees" }
+        ]
+      };
+
+      res.json({ sources });
+    } catch (error) {
+      console.error("Error fetching research sources:", error);
+      res.status(500).json({ error: "Failed to fetch research sources" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
