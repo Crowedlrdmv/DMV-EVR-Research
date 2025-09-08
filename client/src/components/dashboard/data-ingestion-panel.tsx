@@ -12,22 +12,32 @@ export default function DataIngestionPanel() {
   const [bearerToken, setBearerToken] = useState("sk-1234567890abcdef");
   const [showToken, setShowToken] = useState(false);
   const [dbClient, setDbClient] = useState("prisma");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileData, setFileData] = useState<any>(null);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
   const { toast } = useToast();
 
   const uploadMutation = useMutation({
     mutationFn: async (data: any) => {
+      setUploadStatus('uploading');
       const response = await apiRequest("POST", "/api/ingestion/compliance", data, bearerToken);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      setUploadStatus('success');
+      const recordCount = Array.isArray(fileData) ? fileData.length : 1;
       toast({
-        title: "Upload Successful",
-        description: "Compliance data has been ingested",
+        title: "✅ Upload Successful",
+        description: `Successfully ingested ${recordCount} compliance record${recordCount > 1 ? 's' : ''}`,
       });
+      // Clear file selection after successful upload
+      setSelectedFile(null);
+      setFileData(null);
     },
     onError: (error) => {
+      setUploadStatus('error');
       toast({
-        title: "Upload Failed",
+        title: "❌ Upload Failed",
         description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
@@ -41,9 +51,16 @@ export default function DataIngestionPanel() {
     },
     onSuccess: (result) => {
       toast({
-        title: "Validation Complete",
-        description: `Data ${result.verified ? "passed" : "failed"} validation`,
+        title: result.verified ? "✅ Validation Passed" : "❌ Validation Failed",
+        description: result.details || result.reason || `Data ${result.verified ? "passed" : "failed"} validation`,
         variant: result.verified ? "default" : "destructive",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Validation Error",
+        description: error instanceof Error ? error.message : "Validation process failed",
+        variant: "destructive",
       });
     },
   });
@@ -55,14 +72,23 @@ export default function DataIngestionPanel() {
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
+        setSelectedFile(file);
+        setUploadStatus('idle');
+        
         const reader = new FileReader();
         reader.onload = (e) => {
           try {
             const data = JSON.parse(e.target?.result as string);
-            uploadMutation.mutate(data);
-          } catch (error) {
+            setFileData(data);
             toast({
-              title: "Invalid File",
+              title: "✅ File Selected",
+              description: `${file.name} loaded successfully. Ready to upload or validate.`,
+            });
+          } catch (error) {
+            setSelectedFile(null);
+            setFileData(null);
+            toast({
+              title: "❌ Invalid File",
               description: "Please select a valid JSON file",
               variant: "destructive",
             });
@@ -74,13 +100,31 @@ export default function DataIngestionPanel() {
     input.click();
   };
 
+  const handleUpload = () => {
+    if (!fileData) {
+      toast({
+        title: "⚠️ No File Selected",
+        description: "Please select a JSON file before uploading",
+        variant: "destructive",
+      });
+      return;
+    }
+    uploadMutation.mutate(fileData);
+  };
+
   const handleValidate = () => {
-    const testData = {
-      vehicle_id: "ABC123",
-      compliance_status: "valid",
-      expiry_date: "2024-12-31"
-    };
-    validateMutation.mutate(testData);
+    if (!fileData) {
+      toast({
+        title: "⚠️ No File Selected",
+        description: "Please select a JSON file before validating",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Use the first record from the file data for validation, or the whole data if it's a single object
+    const dataToValidate = Array.isArray(fileData) ? fileData[0] : fileData;
+    validateMutation.mutate(dataToValidate);
   };
 
   return (
@@ -148,36 +192,111 @@ export default function DataIngestionPanel() {
           {/* Data Upload Panel */}
           <div className="space-y-4">
             <h4 className="font-medium text-foreground">Upload Compliance Data</h4>
-            <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-              <i className="fas fa-cloud-upload-alt text-4xl text-muted-foreground mb-4"></i>
-              <p className="text-sm text-muted-foreground mb-2">
-                Drag and drop JSON files here, or
-              </p>
-              <Button 
-                onClick={handleFileSelect}
-                disabled={uploadMutation.isPending}
-                data-testid="button-select-file"
-              >
-                Select Files
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2">Supports JSON format only</p>
+            <div className={`border-2 border-dashed rounded-lg p-6 text-center ${
+              selectedFile 
+                ? 'border-green-300 bg-green-50 dark:bg-green-900/10' 
+                : uploadStatus === 'error'
+                ? 'border-red-300 bg-red-50 dark:bg-red-900/10'
+                : 'border-border'
+            }`}>
+              {selectedFile ? (
+                <>
+                  <i className="fas fa-file-check text-4xl text-green-600 mb-4"></i>
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    {selectedFile.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {(selectedFile.size / 1024).toFixed(2)} KB | Ready to process
+                  </p>
+                  <Button 
+                    variant="outline"
+                    onClick={handleFileSelect}
+                    disabled={uploadMutation.isPending}
+                    data-testid="button-change-file"
+                  >
+                    Change File
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-cloud-upload-alt text-4xl text-muted-foreground mb-4"></i>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Drag and drop JSON files here, or
+                  </p>
+                  <Button 
+                    onClick={handleFileSelect}
+                    disabled={uploadMutation.isPending}
+                    data-testid="button-select-file"
+                  >
+                    Select Files
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2">Supports JSON format only</p>
+                </>
+              )}
             </div>
+            
+            {/* Upload Status Indicator */}
+            {uploadStatus !== 'idle' && (
+              <div className={`p-3 rounded-lg border ${
+                uploadStatus === 'uploading' ? 'border-blue-200 bg-blue-50 dark:bg-blue-900/10' :
+                uploadStatus === 'success' ? 'border-green-200 bg-green-50 dark:bg-green-900/10' :
+                'border-red-200 bg-red-50 dark:bg-red-900/10'
+              }`}>
+                <div className="flex items-center space-x-2">
+                  <i className={`fas ${
+                    uploadStatus === 'uploading' ? 'fa-spinner fa-spin text-blue-600' :
+                    uploadStatus === 'success' ? 'fa-check-circle text-green-600' :
+                    'fa-exclamation-circle text-red-600'
+                  }`}></i>
+                  <span className={`text-sm font-medium ${
+                    uploadStatus === 'uploading' ? 'text-blue-800' :
+                    uploadStatus === 'success' ? 'text-green-800' :
+                    'text-red-800'
+                  }`}>
+                    {uploadStatus === 'uploading' ? 'Processing upload...' :
+                     uploadStatus === 'success' ? 'Upload completed successfully' :
+                     'Upload failed'}
+                  </span>
+                </div>
+              </div>
+            )}
+            
             <div className="flex space-x-3">
               <Button 
                 className="flex-1" 
-                disabled={uploadMutation.isPending}
-                onClick={handleFileSelect}
+                disabled={!fileData || uploadMutation.isPending}
+                onClick={handleUpload}
                 data-testid="button-upload-data"
               >
-                {uploadMutation.isPending ? "Uploading..." : "Upload Data"}
+                {uploadMutation.isPending ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-upload mr-2"></i>
+                    Upload Data
+                  </>
+                )}
               </Button>
               <Button 
                 variant="secondary"
                 onClick={handleValidate}
-                disabled={validateMutation.isPending}
+                disabled={!fileData || validateMutation.isPending}
                 data-testid="button-validate-data"
               >
-                {validateMutation.isPending ? "Validating..." : "Validate"}
+                {validateMutation.isPending ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                    Validating...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-shield-alt mr-2"></i>
+                    Validate
+                  </>
+                )}
               </Button>
             </div>
           </div>
