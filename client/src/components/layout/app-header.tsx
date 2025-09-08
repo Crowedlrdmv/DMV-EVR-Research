@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link, useLocation } from "wouter";
 
 export default function AppHeader() {
   const { data: healthStatus } = useQuery({
     queryKey: ["/api/health"],
     refetchInterval: 30000, // Check every 30 seconds
   });
+  const [location] = useLocation();
 
   return (
     <header className="bg-card border-b border-border shadow-sm">
@@ -28,13 +30,17 @@ export default function AppHeader() {
           {/* Navigation and Auth Status */}
           <div className="flex items-center space-x-6">
             <nav className="hidden md:flex items-center space-x-6">
-              <a 
-                href="#dashboard" 
-                className="text-foreground hover:text-primary font-medium transition-colors"
+              <Link 
+                href="/dashboard" 
+                className={`font-medium transition-colors ${
+                  location === "/" || location === "/dashboard" 
+                    ? "text-foreground hover:text-primary" 
+                    : "text-muted-foreground hover:text-primary"
+                }`}
                 data-testid="nav-dashboard"
               >
                 Dashboard
-              </a>
+              </Link>
               <a 
                 href="#ingestion" 
                 className="text-muted-foreground hover:text-primary font-medium transition-colors"
@@ -42,20 +48,28 @@ export default function AppHeader() {
               >
                 Data Ingestion
               </a>
-              <a 
-                href="#analytics" 
-                className="text-muted-foreground hover:text-primary font-medium transition-colors"
+              <Link 
+                href="/analytics" 
+                className={`font-medium transition-colors ${
+                  location === "/analytics" 
+                    ? "text-foreground hover:text-primary" 
+                    : "text-muted-foreground hover:text-primary"
+                }`}
                 data-testid="nav-analytics"
               >
                 Analytics
-              </a>
-              <a 
-                href="#exports" 
-                className="text-muted-foreground hover:text-primary font-medium transition-colors"
+              </Link>
+              <Link 
+                href="/exports" 
+                className={`font-medium transition-colors ${
+                  location === "/exports" 
+                    ? "text-foreground hover:text-primary" 
+                    : "text-muted-foreground hover:text-primary"
+                }`}
                 data-testid="nav-exports"
               >
                 Exports
-              </a>
+              </Link>
             </nav>
             
             {/* Auth Status Indicator */}

@@ -1,22 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link, useLocation } from "wouter";
 
 export default function Sidebar() {
   const { data: summary } = useQuery({
     queryKey: ["/api/analytics/summary"],
   });
+  const [location] = useLocation();
 
   return (
     <aside className="w-64 bg-card border-r border-border">
       <div className="p-6">
         <nav className="space-y-2">
-          <a 
-            href="#dashboard" 
-            className="flex items-center space-x-3 px-3 py-2 bg-primary text-primary-foreground rounded-md font-medium"
+          <Link 
+            href="/dashboard" 
+            className={`flex items-center space-x-3 px-3 py-2 rounded-md font-medium transition-colors ${
+              location === "/" || location === "/dashboard"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            }`}
             data-testid="sidebar-dashboard"
           >
             <i className="fas fa-tachometer-alt w-4"></i>
             <span>Dashboard</span>
-          </a>
+          </Link>
           <a 
             href="#ingestion" 
             className="flex items-center space-x-3 px-3 py-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md font-medium transition-colors"
@@ -25,14 +31,18 @@ export default function Sidebar() {
             <i className="fas fa-upload w-4"></i>
             <span>Data Ingestion</span>
           </a>
-          <a 
-            href="#analytics" 
-            className="flex items-center space-x-3 px-3 py-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md font-medium transition-colors"
+          <Link 
+            href="/analytics" 
+            className={`flex items-center space-x-3 px-3 py-2 rounded-md font-medium transition-colors ${
+              location === "/analytics"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            }`}
             data-testid="sidebar-analytics"
           >
             <i className="fas fa-chart-bar w-4"></i>
             <span>Analytics</span>
-          </a>
+          </Link>
           <a 
             href="#verification" 
             className="flex items-center space-x-3 px-3 py-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md font-medium transition-colors"
@@ -41,14 +51,18 @@ export default function Sidebar() {
             <i className="fas fa-shield-alt w-4"></i>
             <span>AI Verification</span>
           </a>
-          <a 
-            href="#exports" 
-            className="flex items-center space-x-3 px-3 py-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md font-medium transition-colors"
+          <Link 
+            href="/exports" 
+            className={`flex items-center space-x-3 px-3 py-2 rounded-md font-medium transition-colors ${
+              location === "/exports"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            }`}
             data-testid="sidebar-exports"
           >
             <i className="fas fa-file-excel w-4"></i>
             <span>Export Data</span>
-          </a>
+          </Link>
         </nav>
 
         {/* Database Status */}
