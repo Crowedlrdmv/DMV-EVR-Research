@@ -318,7 +318,9 @@ export default function Exports() {
                       <Button 
                         variant="outline" 
                         className="w-full"
+                        disabled={recordCount === 0}
                         data-testid="button-schedule-export"
+                        title={recordCount === 0 ? 'No records available to schedule export' : undefined}
                       >
                         <i className="fas fa-calendar mr-2"></i>
                         Schedule Export

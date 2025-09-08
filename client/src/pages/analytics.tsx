@@ -385,7 +385,7 @@ export default function Analytics() {
                           <span className="font-medium">{state}</span>
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-bold">{count}</div>
+                          <div className="text-lg font-bold">{count as number}</div>
                           <div className="text-xs text-muted-foreground">programs</div>
                         </div>
                       </div>
