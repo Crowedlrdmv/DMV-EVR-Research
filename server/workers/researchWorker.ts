@@ -54,11 +54,38 @@ export async function processResearchJob(jobId: string, data: ResearchJobData): 
         url: `https://dmv.${data.state.toLowerCase()}.gov/${dataType}`,
         effectiveDate: new Date(),
         lastUpdated: new Date(),
-        summary: `Dummy ${dataType} program for ${data.state} state`,
-        rawSourceId: artifact.id
+        summary: `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} compliance program for ${data.state}. Includes requirements for vehicle ${dataType}, fee structure, and compliance deadlines.`,
+        rawSourceId: artifact.id,
+        // Source validation fields - mark as demo data
+        sourceValid: true,
+        httpStatus: 200,
+        checkedAt: new Date(),
+        isDemo: true
       });
 
       await db.insert(programs).values(programData);
+    }
+
+    // Create a few programs with various source validation statuses for demo
+    if (data.dataTypes.includes('emissions')) {
+      // Add a broken link example
+      const brokenLinkProgram = insertProgramSchema.parse({
+        state: data.state,
+        type: 'emissions',
+        title: `${data.state} Legacy Emissions System`,
+        url: `https://old.dmv.${data.state.toLowerCase()}.gov/emissions-legacy`,
+        effectiveDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 year ago
+        lastUpdated: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000), // 6 months ago  
+        summary: `Legacy emissions program with outdated source link`,
+        rawSourceId: artifact.id,
+        sourceValid: false,
+        sourceReason: '404',
+        httpStatus: 404,
+        checkedAt: new Date(),
+        isDemo: true
+      });
+      
+      await db.insert(programs).values(brokenLinkProgram);
     }
 
     console.log(`✓ Completed research job ${jobId} - created ${data.dataTypes.length} programs`);
