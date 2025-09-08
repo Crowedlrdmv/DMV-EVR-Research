@@ -6,16 +6,24 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
+interface VerificationResult {
+  vehicleId: string;
+  verified: boolean;
+  details: string;
+  timestamp: string;
+}
+
 export default function VerificationPanel() {
   const [testData, setTestData] = useState(`{
   "vehicle_id": "ABC123",
   "compliance_status": "valid",
   "expiry_date": "2024-12-31"
 }`);
+  const [localVerifications, setLocalVerifications] = useState<VerificationResult[]>([]);
   
   const { toast } = useToast();
 
-  const { data: recentVerifications } = useQuery({
+  const { data: recentRecords } = useQuery({
     queryKey: ["/api/verifications/recent"],
   });
 
@@ -42,9 +50,19 @@ export default function VerificationPanel() {
       return response.json();
     },
     onSuccess: (result) => {
+      // Store the verification result locally
+      const newVerification: VerificationResult = {
+        vehicleId: result.vehicleId,
+        verified: result.verified,
+        details: result.details || result.reason,
+        timestamp: result.timestamp,
+      };
+      
+      setLocalVerifications(prev => [newVerification, ...prev.slice(0, 9)]); // Keep last 10 results
+
       toast({
-        title: "Verification Complete",
-        description: result.verified ? result.details : result.reason,
+        title: result.verified ? "✅ Verification Successful" : "❌ Verification Failed",
+        description: result.details || result.reason,
         variant: result.verified ? "default" : "destructive",
       });
     },
@@ -134,26 +152,38 @@ export default function VerificationPanel() {
           <div className="space-y-4">
             <h4 className="font-medium text-foreground">Recent Verifications</h4>
             <div className="space-y-2 max-h-32 overflow-y-auto">
-              {recentVerifications && (recentVerifications as any)?.length > 0 ? (
-                (recentVerifications as any)?.map((verification: any, index: number) => (
+              {localVerifications.length > 0 ? (
+                localVerifications.map((verification, index) => (
                   <div 
                     key={index} 
-                    className="flex items-center justify-between p-2 bg-muted rounded text-sm"
+                    className="flex flex-col p-2 bg-muted rounded text-sm"
                     data-testid={`verification-item-${index}`}
                   >
-                    <span className="text-muted-foreground">{verification.vehicleId}</span>
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${
-                      verification.status === 'valid' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {verification.status === 'valid' ? 'Valid' : 'Expired'}
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground font-medium">
+                        {verification.vehicleId}
+                      </span>
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                        verification.verified 
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' 
+                          : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+                      }`}>
+                        {verification.verified ? '✅ Verified' : '❌ Failed'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {verification.details}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {new Date(verification.timestamp).toLocaleString()}
+                    </div>
                   </div>
                 ))
               ) : (
                 <div className="text-center text-muted-foreground text-sm py-4">
+                  <i className="fas fa-clipboard-check text-2xl mb-2 block"></i>
                   No recent verifications
+                  <p className="text-xs mt-1">Verify some data to see results here</p>
                 </div>
               )}
             </div>
