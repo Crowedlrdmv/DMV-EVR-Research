@@ -4,6 +4,13 @@ import { storage } from "./storage";
 import { requireBearerToken, optionalBearerToken, type AuthenticatedRequest } from "./middleware/auth";
 import { insertComplianceRecordSchema } from "@shared/schema";
 import ExcelJS from "exceljs";
+import { 
+  upsertStateResultsHandler, 
+  researchStateHandler, 
+  getStateHandler, 
+  getStateSourcesHandler, 
+  listStatesHandler 
+} from "./controllers/statesController";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
@@ -187,6 +194,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Internal server error" });
     }
   });
+
+  // State research endpoints
+  app.put("/api/states/:code", requireBearerToken, upsertStateResultsHandler);
+  app.post("/api/states/:code/research", requireBearerToken, researchStateHandler);
+  app.get("/api/states/:code", getStateHandler);
+  app.get("/api/states/:code/sources", getStateSourcesHandler);
+  app.get("/api/states", listStatesHandler);
 
   const httpServer = createServer(app);
   return httpServer;
