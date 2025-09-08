@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/queryClient";
+import { toast } from "@/hooks/use-toast";
 
 // Types based on the specification
 export type ResearchDepth = 'summary' | 'full';
@@ -39,6 +40,39 @@ export interface ResearchSummary {
   totalArtifacts: number;
 }
 
+// Utility function to safely extract arrays from API responses
+const asArray = <T,>(value: any, key?: string): T[] => {
+  if (Array.isArray(value)) return value;
+  if (key && Array.isArray(value?.[key])) return value[key];
+  return [];
+};
+
+// Fetch wrapper with error handling, timeout, and retry logic
+const fetchWithRetry = async (url: string, options: RequestInit = {}, retries = 2): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    // Retry on 429 or 5xx errors
+    if (!response.ok && retries > 0 && (response.status === 429 || response.status >= 500)) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+      return fetchWithRetry(url, options, retries - 1);
+    }
+
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+};
+
 // Bearer token for authentication - in a real app this would come from auth context
 const getBearerToken = (): string => {
   // For demo purposes, using a placeholder token
@@ -56,6 +90,10 @@ export const researchApi = {
   // Run research job
   runResearch: async (payload: ResearchRunPayload): Promise<{ jobIds: string[]; message: string }> => {
     if (!isResearchRunEnabled()) {
+      toast({
+        title: "ℹ️ Research Disabled",
+        description: "Run disabled in preview. Results still visible below.",
+      });
       throw new Error('Research run is disabled in this environment');
     }
     
@@ -65,50 +103,84 @@ export const researchApi = {
 
   // Get all research jobs
   getJobs: async (): Promise<ResearchJob[]> => {
-    const response = await fetch('/api/research/jobs');
-    if (!response.ok) {
-      throw new Error(`Failed to fetch jobs: ${response.statusText}`);
+    try {
+      const response = await fetchWithRetry('/api/research/jobs');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch jobs: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return asArray<ResearchJob>(data, 'jobs');
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+      toast({
+        title: "⚠️ Error Loading Jobs",
+        description: "Failed to load research jobs. Please try again.",
+        variant: "destructive",
+      });
+      return [];
     }
-    return response.json();
   },
 
   // Get specific research job
-  getJob: async (jobId: string): Promise<ResearchJob> => {
-    const response = await fetch(`/api/research/jobs/${jobId}`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch job ${jobId}: ${response.statusText}`);
+  getJob: async (jobId: string): Promise<ResearchJob | null> => {
+    try {
+      const response = await fetchWithRetry(`/api/research/jobs/${jobId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch job ${jobId}: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return data.job || null;
+    } catch (error) {
+      console.error(`Error fetching job ${jobId}:`, error);
+      return null;
     }
-    return response.json();
   },
 
   // Get research results
   getResults: async (params?: { state?: string; type?: string }): Promise<ResearchProgram[]> => {
-    const searchParams = new URLSearchParams();
-    if (params?.state) searchParams.set('state', params.state);
-    if (params?.type) searchParams.set('type', params.type);
-    
-    const url = `/api/research/results${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch results: ${response.statusText}`);
+    try {
+      const searchParams = new URLSearchParams();
+      if (params?.state) searchParams.set('state', params.state);
+      if (params?.type) searchParams.set('type', params.type);
+      
+      const url = `/api/research/results${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+      const response = await fetchWithRetry(url);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch results: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return asArray<ResearchProgram>(data, 'results');
+    } catch (error) {
+      console.error('Error fetching results:', error);
+      toast({
+        title: "⚠️ Error Loading Results",
+        description: "Failed to load research results. Please try again.",
+        variant: "destructive",
+      });
+      return [];
     }
-    return response.json();
   },
 
   // Get research deltas
   getDeltas: async (params?: { state?: string; since?: string }): Promise<any[]> => {
-    const searchParams = new URLSearchParams();
-    if (params?.state) searchParams.set('state', params.state);
-    if (params?.since) searchParams.set('since', params.since);
-    
-    const url = `/api/research/deltas${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch deltas: ${response.statusText}`);
+    try {
+      const searchParams = new URLSearchParams();
+      if (params?.state) searchParams.set('state', params.state);
+      if (params?.since) searchParams.set('since', params.since);
+      
+      const url = `/api/research/deltas${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+      const response = await fetchWithRetry(url);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch deltas: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return asArray<any>(data, 'deltas');
+    } catch (error) {
+      console.error('Error fetching deltas:', error);
+      return [];
     }
-    return response.json();
   },
 
   // Get research summary
@@ -136,10 +208,11 @@ export const researchApi = {
   checkForDuplicateJob: async (states: string[], dataTypes: string[]): Promise<boolean> => {
     try {
       const jobs = await researchApi.getJobs();
-      return jobs.some(job => 
+      const safeJobs = Array.isArray(jobs) ? jobs : [];
+      return safeJobs.some(job => 
         (job.status === 'queued' || job.status === 'running') &&
-        job.states.sort().join(',') === states.sort().join(',') &&
-        job.dataTypes.sort().join(',') === dataTypes.sort().join(',')
+        (Array.isArray(job.states) ? job.states.slice().sort().join(',') : '') === states.slice().sort().join(',') &&
+        (Array.isArray(job.dataTypes) ? job.dataTypes.slice().sort().join(',') : '') === dataTypes.slice().sort().join(',')
       );
     } catch (error) {
       console.error('Error checking for duplicate jobs:', error);

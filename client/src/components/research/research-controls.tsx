@@ -120,11 +120,12 @@ export default function ResearchControls({
     });
   };
 
-  // Check if duplicate job is running
-  const isDuplicateRunning = jobs?.some(job => 
+  // Check if duplicate job is running (with safe array guards)
+  const safeJobs = Array.isArray(jobs) ? jobs : Array.isArray((jobs as any)?.jobs) ? (jobs as any).jobs : [];
+  const isDuplicateRunning = safeJobs.some(job => 
     (job.status === 'queued' || job.status === 'running') &&
-    job.states.sort().join(',') === selectedStates.sort().join(',') &&
-    job.dataTypes.sort().join(',') === selectedDataTypes.sort().join(',')
+    (Array.isArray(job.states) ? job.states.slice().sort().join(',') : '') === selectedStates.slice().sort().join(',') &&
+    (Array.isArray(job.dataTypes) ? job.dataTypes.slice().sort().join(',') : '') === selectedDataTypes.slice().sort().join(',')
   ) || false;
 
   const isRunDisabled = runResearchMutation.isPending || 
