@@ -8,6 +8,15 @@ This is a full-stack DMV Compliance Research application built with Node.js/Expr
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (September 8, 2025)
+
+- **Completed Research Run Flow Implementation**: Added complete research job queuing with Redis fallback, duplicate prevention, optimistic UI updates, and comprehensive error handling
+- **Source URL Validation**: Enhanced programs table with source validation fields (source_valid, source_reason, http_status, checked_at, is_demo) and implemented source validation service
+- **Enhanced Research Results Table**: Added source link validation status with tooltips, demo data badges, and broken link indicators
+- **Fixed AI Verification Calculation**: Updated to use real localStorage verification data instead of hardcoded success rates
+- **Added Feature Flags**: Implemented VITE_RESEARCH_RUN_ENABLED and VITE_RESEARCH_SCHEDULE_ENABLED environment variables
+- **Improved Array Safety**: Added asArray utility function and error boundaries to prevent crashes from API inconsistencies
+
 ## System Architecture
 
 ### Frontend Architecture
