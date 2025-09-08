@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function Exports() {
   const [exportFormat, setExportFormat] = useState("xlsx");
@@ -97,6 +98,15 @@ export default function Exports() {
   };
 
   const handleScheduleExport = () => {
+    if (recordCount === 0) {
+      toast({
+        title: "⚠️ No Data Available",
+        description: "Cannot schedule exports - no records to export. Please ingest data first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const scheduleData = {
       frequency: scheduleFrequency,
       time: scheduleTime,
@@ -115,11 +125,12 @@ export default function Exports() {
   const previewData = Array.isArray(recentRecords) ? recentRecords.slice(0, 5) : [];
 
   return (
-    <div className="bg-background font-sans antialiased min-h-screen">
-      <AppHeader />
-      <div className="flex min-h-[calc(100vh-4rem)]">
-        <Sidebar />
-        <main className="flex-1 p-6 space-y-6">
+    <TooltipProvider>
+      <div className="bg-background font-sans antialiased min-h-screen">
+        <AppHeader />
+        <div className="flex min-h-[calc(100vh-4rem)]">
+          <Sidebar />
+          <main className="flex-1 p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -319,7 +330,17 @@ export default function Exports() {
                       </DialogHeader>
                       <div className="space-y-4 mt-4">
                         <div>
-                          <Label htmlFor="frequency">Frequency</Label>
+                          <div className="flex items-center space-x-2">
+                            <Label htmlFor="frequency">Frequency</Label>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <i className="fas fa-info-circle text-muted-foreground text-sm cursor-help"></i>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>How often the export should be automatically generated</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
                           <Select value={scheduleFrequency} onValueChange={setScheduleFrequency}>
                             <SelectTrigger>
                               <SelectValue />
@@ -332,7 +353,17 @@ export default function Exports() {
                           </Select>
                         </div>
                         <div>
-                          <Label htmlFor="schedule-time">Time</Label>
+                          <div className="flex items-center space-x-2">
+                            <Label htmlFor="schedule-time">Time</Label>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <i className="fas fa-info-circle text-muted-foreground text-sm cursor-help"></i>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>What time of day to generate the export (24-hour format)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
                           <Input
                             id="schedule-time"
                             type="time"
@@ -402,5 +433,6 @@ export default function Exports() {
         </main>
       </div>
     </div>
+    </TooltipProvider>
   );
 }
