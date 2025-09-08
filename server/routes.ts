@@ -140,34 +140,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Excel export endpoint
   app.get("/api/export", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
     try {
-      const records = await storage.getComplianceRecords(1000); // Limit for memory efficiency
-      
+      const { type, state } = req.query;
       const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Compliance Records');
       
-      // Define columns
-      worksheet.columns = [
-        { header: 'Vehicle ID', key: 'vehicleId', width: 20 },
-        { header: 'Compliance Status', key: 'complianceStatus', width: 20 },
-        { header: 'Expiry Date', key: 'expiryDate', width: 15 },
-        { header: 'Verified', key: 'isVerified', width: 10 },
-        { header: 'Created At', key: 'createdAt', width: 20 }
-      ];
-      
-      // Add data rows
-      const rows = records.map(record => ({
-        vehicleId: record.vehicleId,
-        complianceStatus: record.complianceStatus,
-        expiryDate: record.expiryDate ? record.expiryDate.toISOString().split('T')[0] : '',
-        isVerified: record.isVerified ? 'Yes' : 'No',
-        createdAt: record.createdAt.toISOString()
-      }));
-      
-      worksheet.addRows(rows);
+      if (type === 'states' || state) {
+        // Export state research data
+        const { getStateWithResults, listStates } = await import("./services/statesService");
+        
+        if (state && typeof state === 'string') {
+          // Export single state
+          const stateData = await getStateWithResults(state.toUpperCase());
+          if (!stateData) {
+            return res.status(404).json({ error: 'State not found' });
+          }
+          
+          const worksheet = workbook.addWorksheet(`${stateData.name} DMV Research`);
+          
+          // Define columns for state data
+          worksheet.columns = [
+            { header: 'Field', key: 'field', width: 30 },
+            { header: 'Value', key: 'value', width: 50 },
+            { header: 'Source URL', key: 'sourceUrl', width: 60 }
+          ];
+          
+          // Add state data rows
+          const rows = [
+            { field: 'State Code', value: stateData.code || '', sourceUrl: '' },
+            { field: 'State Name', value: stateData.name || '', sourceUrl: '' },
+            { field: 'EVR Exists', value: stateData.evrExists || '', sourceUrl: stateData.evrSourceUrl || '' },
+            { field: 'EVR Mandatory for Dealers', value: stateData.evrMandatoryForDealers || '', sourceUrl: stateData.evrRequirementSourceUrl || '' },
+            { field: 'Digital Forms Allowed', value: stateData.digitalFormsAllowed || '', sourceUrl: stateData.digitalFormsSourceUrl || '' },
+            { field: 'Ownership Transfer Process', value: stateData.ownershipTransferProcess || '', sourceUrl: stateData.ownershipTransferSourceUrl || '' },
+            { field: 'Typical Title Issuance Time', value: stateData.typicalTitleIssuanceTime || '', sourceUrl: stateData.titleIssuanceSourceUrl || '' },
+            { field: 'Dealer May Issue Temp Tag', value: stateData.dealerMayIssueTempTag || '', sourceUrl: stateData.tempTagIssuanceSourceUrl || '' },
+            { field: 'Temp Tag Issuance Method', value: stateData.tempTagIssuanceMethod || '', sourceUrl: stateData.tempTagIssuanceMethodSourceUrl || '' },
+            { field: 'Temp Tag Duration (Days)', value: stateData.tempTagDurationDays?.toString() || '', sourceUrl: stateData.tempTagDurationSourceUrl || '' },
+            { field: 'Temp Tag Renewable', value: stateData.tempTagRenewable || '', sourceUrl: stateData.tempTagRenewalSourceUrl || '' },
+            { field: 'Temp Tag Fee Who Pays', value: stateData.tempTagFeeWhoPays || '', sourceUrl: stateData.tempTagFeeSourceUrl || '' },
+            { field: 'Last Verified At', value: stateData.lastVerifiedAt ? new Date(stateData.lastVerifiedAt).toISOString() : '', sourceUrl: '' }
+          ];
+          
+          worksheet.addRows(rows);
+          
+          // Set filename for single state
+          res.setHeader('Content-Disposition', `attachment; filename="${stateData.code}_dmv_research.xlsx"`);
+        } else {
+          // Export all states
+          const statesData = await listStates();
+          const worksheet = workbook.addWorksheet('All States DMV Research');
+          
+          // Define columns for all states summary
+          worksheet.columns = [
+            { header: 'State Code', key: 'code', width: 12 },
+            { header: 'State Name', key: 'name', width: 20 },
+            { header: 'Last Verified', key: 'lastVerified', width: 20 },
+            { header: 'EVR Exists', key: 'evrExists', width: 15 },
+            { header: 'Digital Forms', key: 'digitalForms', width: 15 },
+            { header: 'Temp Tag Duration', key: 'tempTagDuration', width: 18 }
+          ];
+          
+          const rows = statesData.map(state => ({
+            code: state.code,
+            name: state.name,
+            lastVerified: state.lastVerifiedAt ? new Date(state.lastVerifiedAt).toISOString().split('T')[0] : 'Not verified',
+            evrExists: 'N/A', // Would need to join with results
+            digitalForms: 'N/A',
+            tempTagDuration: 'N/A'
+          }));
+          
+          worksheet.addRows(rows);
+          
+          // Set filename for all states
+          res.setHeader('Content-Disposition', 'attachment; filename="all_states_dmv_research.xlsx"');
+        }
+      } else {
+        // Default: Export compliance records
+        const records = await storage.getComplianceRecords(1000); // Limit for memory efficiency
+        
+        const worksheet = workbook.addWorksheet('Compliance Records');
+        
+        // Define columns
+        worksheet.columns = [
+          { header: 'Vehicle ID', key: 'vehicleId', width: 20 },
+          { header: 'Compliance Status', key: 'complianceStatus', width: 20 },
+          { header: 'Expiry Date', key: 'expiryDate', width: 15 },
+          { header: 'Verified', key: 'isVerified', width: 10 },
+          { header: 'Created At', key: 'createdAt', width: 20 }
+        ];
+        
+        // Add data rows
+        const rows = records.map(record => ({
+          vehicleId: record.vehicleId,
+          complianceStatus: record.complianceStatus,
+          expiryDate: record.expiryDate ? record.expiryDate.toISOString().split('T')[0] : '',
+          isVerified: record.isVerified ? 'Yes' : 'No',
+          createdAt: record.createdAt.toISOString()
+        }));
+        
+        worksheet.addRows(rows);
+        
+        // Set filename for compliance records
+        res.setHeader('Content-Disposition', 'attachment; filename="compliance_records.xlsx"');
+      }
       
       // Set response headers for Excel download
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', 'attachment; filename="compliance_records.xlsx"');
       
       // Stream the workbook
       await workbook.xlsx.write(res);
