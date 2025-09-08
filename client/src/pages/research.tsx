@@ -2,7 +2,7 @@ import AppHeader from "@/components/layout/app-header";
 import Sidebar from "@/components/layout/sidebar";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import ResearchResultsTable from "@/components/research/research-results-table";
 import ResearchSummaryCards from "@/components/research/research-summary-cards";
 
 export default function Research() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   
   // Get URL search params for state management
   const urlParams = new URLSearchParams(window.location.search);
@@ -38,6 +38,20 @@ export default function Research() {
     const newUrl = `/research?${params.toString()}`;
     window.history.replaceState({}, '', newUrl);
   }, [selectedStates, selectedDataTypes, depth]);
+
+  // Navigate to analytics with current filters
+  const handleViewInAnalytics = () => {
+    const params = new URLSearchParams();
+    if (selectedStates.length > 0) {
+      params.set('states', selectedStates.join(','));
+    }
+    if (selectedDataTypes.length > 0) {
+      params.set('types', selectedDataTypes.join(','));
+    }
+    
+    const analyticsUrl = `/analytics?${params.toString()}`;
+    setLocation(analyticsUrl);
+  };
 
   return (
     <div className="bg-background font-sans antialiased min-h-screen">
@@ -104,7 +118,12 @@ export default function Research() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">Research Results</h2>
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleViewInAnalytics}
+                data-testid="button-view-analytics"
+              >
                 <i className="fas fa-external-link-alt mr-2"></i>
                 View in Analytics
               </Button>

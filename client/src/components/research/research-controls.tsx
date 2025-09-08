@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { researchApi, type ResearchDepth } from "@/lib/researchApi";
+import { researchApi, asArray, type ResearchDepth } from "@/lib/researchApi";
 import { queryClient } from "@/lib/queryClient";
 
 interface ResearchControlsProps {
@@ -121,7 +121,7 @@ export default function ResearchControls({
   };
 
   // Check if duplicate job is running (with safe array guards)
-  const safeJobs = Array.isArray(jobs) ? jobs : Array.isArray((jobs as any)?.jobs) ? (jobs as any).jobs : [];
+  const safeJobs = asArray(jobs, 'jobs');
   const isDuplicateRunning = safeJobs.some((job: any) => 
     (job.status === 'queued' || job.status === 'running') &&
     (Array.isArray(job.states) ? job.states.slice().sort().join(',') : '') === selectedStates.slice().sort().join(',') &&
@@ -227,6 +227,7 @@ export default function ResearchControls({
                 disabled={isRunDisabled}
                 className="w-full"
                 data-testid="button-run-research"
+                title={isDuplicateRunning ? 'A similar research job is already running' : undefined}
               >
                 {runResearchMutation.isPending ? (
                   <>
@@ -248,22 +249,43 @@ export default function ResearchControls({
 
               <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full" data-testid="button-schedule-research">
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    disabled={!researchApi.isScheduleEnabled()}
+                    data-testid="button-schedule-research"
+                  >
                     <i className="fas fa-calendar-alt mr-2"></i>
                     Schedule Research
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Schedule Automated Research</DialogTitle>
+                    <DialogTitle>
+                      {researchApi.isScheduleEnabled() ? 'Schedule Automated Research' : 'Scheduling Not Available'}
+                    </DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      Scheduled research functionality would be implemented here.
-                      This would allow users to set up recurring research jobs.
-                    </p>
+                    {researchApi.isScheduleEnabled() ? (
+                      <p className="text-muted-foreground">
+                        Scheduled research functionality would be implemented here.
+                        This would allow users to set up recurring research jobs.
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-muted-foreground">
+                          Scheduling is not available in this environment. This feature allows you to set up recurring research jobs that run automatically at specified intervals.
+                        </p>
+                        <div className="p-3 bg-muted rounded-lg text-sm">
+                          <p className="font-medium mb-1">To enable scheduling:</p>
+                          <p className="text-muted-foreground">
+                            Set <code>VITE_RESEARCH_SCHEDULE_ENABLED=true</code> in your environment configuration.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     <Button onClick={() => setShowScheduleDialog(false)} className="w-full">
-                      Close
+                      {researchApi.isScheduleEnabled() ? 'Close' : 'Got it'}
                     </Button>
                   </div>
                 </DialogContent>

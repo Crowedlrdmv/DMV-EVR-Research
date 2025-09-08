@@ -32,6 +32,12 @@ export interface ResearchProgram {
   summary?: string;
   lastUpdated: string;
   createdAt: string;
+  // Source validation fields
+  sourceValid?: boolean;
+  sourceReason?: string;
+  httpStatus?: number;
+  checkedAt?: string;
+  isDemo?: boolean;
 }
 
 export interface ResearchSummary {
@@ -41,7 +47,7 @@ export interface ResearchSummary {
 }
 
 // Utility function to safely extract arrays from API responses
-const asArray = <T,>(value: any, key?: string): T[] => {
+export const asArray = <T,>(value: any, key?: string): T[] => {
   if (Array.isArray(value)) return value;
   if (key && Array.isArray(value?.[key])) return value[key];
   return [];
@@ -80,9 +86,13 @@ const getBearerToken = (): string => {
   return "demo-research-token-12345";
 };
 
-// Environment flag check
+// Environment flag checks
 const isResearchRunEnabled = (): boolean => {
-  return import.meta.env.VITE_RESEARCH_RUN_ENABLED !== 'false';
+  return import.meta.env.VITE_RESEARCH_RUN_ENABLED === 'true';
+};
+
+const isResearchScheduleEnabled = (): boolean => {
+  return import.meta.env.VITE_RESEARCH_SCHEDULE_ENABLED === 'true';
 };
 
 // API Client Functions
@@ -97,8 +107,35 @@ export const researchApi = {
       throw new Error('Research run is disabled in this environment');
     }
     
-    const response = await apiRequest('POST', '/api/research/run', payload, getBearerToken());
-    return response.json();
+    try {
+      const response = await apiRequest('POST', '/api/research/run', payload, getBearerToken());
+      const result = await response.json();
+      
+      // Handle specific error cases
+      if (response.status === 409) {
+        throw new Error('A similar research job is already running');
+      }
+      if (response.status === 429) {
+        throw new Error('Too many requests. Please wait a moment and try again.');
+      }
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to start research job');
+      }
+      
+      return result;
+    } catch (error) {
+      // Handle Redis/queue connection errors specifically
+      if (error instanceof Error) {
+        if (error.message.includes('Redis') || error.message.includes('queue')) {
+          toast({
+            title: "⚠️ Queue Service Unavailable",
+            description: "Research queue is temporarily unavailable. Please try again later.",
+            variant: "destructive",
+          });
+        }
+      }
+      throw error;
+    }
   },
 
   // Get all research jobs
@@ -218,6 +255,11 @@ export const researchApi = {
       console.error('Error checking for duplicate jobs:', error);
       return false;
     }
+  },
+
+  // Check if scheduling is enabled
+  isScheduleEnabled: (): boolean => {
+    return isResearchScheduleEnabled();
   }
 };
 

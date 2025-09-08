@@ -115,9 +115,17 @@ export const programs = pgTable("programs", {
   validFrom: timestamp("valid_from").defaultNow().notNull(),
   validTo: timestamp("valid_to"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Source validation fields
+  sourceValid: boolean("source_valid").default(true),
+  sourceReason: text("source_reason"), // "404", "malformed", etc.
+  httpStatus: integer("http_status"),
+  checkedAt: timestamp("checked_at"),
+  isDemo: boolean("is_demo").default(false).notNull(),
 }, (table) => ({
   stateTypeIdx: index("programs_state_type_idx").on(table.state, table.type),
   validFromToIdx: index("programs_valid_from_to_idx").on(table.validFrom, table.validTo),
+  sourceValidIdx: index("programs_source_valid_idx").on(table.sourceValid),
+  isDemoIdx: index("programs_is_demo_idx").on(table.isDemo),
 }));
 
 export const requirements = pgTable("requirements", {

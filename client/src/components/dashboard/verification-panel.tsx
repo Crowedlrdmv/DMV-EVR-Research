@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +20,39 @@ export default function VerificationPanel() {
   "expiry_date": "2024-12-31"
 }`);
   const [localVerifications, setLocalVerifications] = useState<VerificationResult[]>([]);
+  
+  // Load verification history from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('verification-history');
+      if (stored) {
+        const parsedHistory = JSON.parse(stored);
+        if (Array.isArray(parsedHistory)) {
+          setLocalVerifications(parsedHistory.slice(0, 25)); // Keep last 25 entries
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load verification history:', error);
+    }
+  }, []);
+  
+  // Calculate success rate from stored verifications
+  const calculateSuccessRate = (): string => {
+    if (localVerifications.length === 0) return '—';
+    
+    const successCount = localVerifications.filter(v => v.verified).length;
+    const percentage = (successCount / localVerifications.length) * 100;
+    return `${percentage.toFixed(1)}%`;
+  };
+  
+  // Save verification history to localStorage
+  const saveVerificationHistory = (verifications: VerificationResult[]) => {
+    try {
+      localStorage.setItem('verification-history', JSON.stringify(verifications));
+    } catch (error) {
+      console.warn('Failed to save verification history:', error);
+    }
+  };
   
   const { toast } = useToast();
 
@@ -58,7 +91,9 @@ export default function VerificationPanel() {
         timestamp: result.timestamp,
       };
       
-      setLocalVerifications(prev => [newVerification, ...prev.slice(0, 9)]); // Keep last 10 results
+      const updatedVerifications = [newVerification, ...localVerifications.slice(0, 24)]; // Keep last 25 results
+      setLocalVerifications(updatedVerifications);
+      saveVerificationHistory(updatedVerifications);
 
       toast({
         title: result.verified ? "✅ Verification Successful" : "❌ Verification Failed",
@@ -119,7 +154,7 @@ export default function VerificationPanel() {
               <div className="flex items-center justify-between p-3 bg-muted rounded-md">
                 <span className="text-sm text-muted-foreground">Success Rate</span>
                 <span className="font-medium text-green-600" data-testid="success-rate">
-                  {(ingestionStatus as any)?.successRate || "100%"}
+                  {calculateSuccessRate()}
                 </span>
               </div>
             </div>
