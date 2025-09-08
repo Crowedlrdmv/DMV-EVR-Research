@@ -63,6 +63,18 @@ export default function Sidebar() {
             <i className="fas fa-file-excel w-4"></i>
             <span>Export Data</span>
           </Link>
+          <Link 
+            href="/research" 
+            className={`flex items-center space-x-3 px-3 py-2 rounded-md font-medium transition-colors ${
+              location === "/research"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            }`}
+            data-testid="sidebar-research"
+          >
+            <i className="fas fa-search w-4"></i>
+            <span>Research</span>
+          </Link>
         </nav>
 
         {/* Database Status */}
