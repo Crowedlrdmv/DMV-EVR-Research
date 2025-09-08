@@ -122,7 +122,7 @@ export default function ResearchControls({
 
   // Check if duplicate job is running (with safe array guards)
   const safeJobs = Array.isArray(jobs) ? jobs : Array.isArray((jobs as any)?.jobs) ? (jobs as any).jobs : [];
-  const isDuplicateRunning = safeJobs.some(job => 
+  const isDuplicateRunning = safeJobs.some((job: any) => 
     (job.status === 'queued' || job.status === 'running') &&
     (Array.isArray(job.states) ? job.states.slice().sort().join(',') : '') === selectedStates.slice().sort().join(',') &&
     (Array.isArray(job.dataTypes) ? job.dataTypes.slice().sort().join(',') : '') === selectedDataTypes.slice().sort().join(',')

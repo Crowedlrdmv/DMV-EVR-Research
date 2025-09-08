@@ -17,15 +17,17 @@ export default function ResearchJobsTable() {
     refetchInterval: (query) => {
       // Poll every 3 seconds if any job is queued or running
       const data = query.state.data;
-      const hasActiveJobs = data?.some((job: ResearchJob) => 
+      const safeData = Array.isArray(data) ? data : [];
+      const hasActiveJobs = safeData.some((job: ResearchJob) => 
         job.status === 'queued' || job.status === 'running'
       );
       return hasActiveJobs ? 3000 : false;
     },
   });
 
-  // Get only last 25 jobs
-  const displayJobs = jobs?.slice(0, 25) || [];
+  // Get only last 25 jobs with safe array handling
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+  const displayJobs = safeJobs.slice(0, 25);
 
   const toggleRowExpansion = (jobId: string) => {
     const newExpanded = new Set(expandedRows);

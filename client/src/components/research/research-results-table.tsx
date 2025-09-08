@@ -18,11 +18,12 @@ export default function ResearchResultsTable() {
     queryFn: () => researchApi.getResults(),
   });
 
-  // Memoized filtering logic
+  // Memoized filtering logic with safe array handling
   const filteredResults = useMemo(() => {
-    if (!allResults) return [];
+    const safeResults = Array.isArray(allResults) ? allResults : [];
+    if (safeResults.length === 0) return [];
 
-    return allResults.filter(result => {
+    return safeResults.filter(result => {
       // Text search on title
       const matchesSearch = searchQuery === "" || 
         result.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -39,16 +40,18 @@ export default function ResearchResultsTable() {
     });
   }, [allResults, searchQuery, selectedStates, selectedTypes]);
 
-  // Get unique values for filter chips
+  // Get unique values for filter chips with safe array handling
   const availableStates = useMemo(() => {
-    if (!allResults) return [];
-    const states = new Set(allResults.map(r => r.state));
+    const safeResults = Array.isArray(allResults) ? allResults : [];
+    if (safeResults.length === 0) return [];
+    const states = new Set(safeResults.map(r => r.state));
     return Array.from(states).sort();
   }, [allResults]);
 
   const availableTypes = useMemo(() => {
-    if (!allResults) return [];
-    const types = new Set(allResults.map(r => r.type));
+    const safeResults = Array.isArray(allResults) ? allResults : [];
+    if (safeResults.length === 0) return [];
+    const types = new Set(safeResults.map(r => r.type));
     return Array.from(types).sort();
   }, [allResults]);
 

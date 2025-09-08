@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import ResearchControls from "@/components/research/research-controls";
 import ResearchJobsTable from "@/components/research/research-jobs-table";
 import ResearchResultsTable from "@/components/research/research-results-table";
@@ -61,21 +62,25 @@ export default function Research() {
           </div>
 
           {/* Research Summary Cards */}
-          <ResearchSummaryCards />
+          <ErrorBoundary>
+            <ResearchSummaryCards />
+          </ErrorBoundary>
 
           <Separator />
 
           {/* Controls Section */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground">Research Controls</h2>
-            <ResearchControls
-              selectedStates={selectedStates}
-              setSelectedStates={setSelectedStates}
-              selectedDataTypes={selectedDataTypes}
-              setSelectedDataTypes={setSelectedDataTypes}
-              depth={depth}
-              setDepth={setDepth}
-            />
+            <ErrorBoundary>
+              <ResearchControls
+                selectedStates={selectedStates}
+                setSelectedStates={setSelectedStates}
+                selectedDataTypes={selectedDataTypes}
+                setSelectedDataTypes={setSelectedDataTypes}
+                depth={depth}
+                setDepth={setDepth}
+              />
+            </ErrorBoundary>
           </div>
 
           <Separator />
@@ -88,7 +93,9 @@ export default function Research() {
                 Last 25 Jobs
               </Badge>
             </div>
-            <ResearchJobsTable />
+            <ErrorBoundary>
+              <ResearchJobsTable />
+            </ErrorBoundary>
           </div>
 
           <Separator />
@@ -102,7 +109,9 @@ export default function Research() {
                 View in Analytics
               </Button>
             </div>
-            <ResearchResultsTable />
+            <ErrorBoundary>
+              <ResearchResultsTable />
+            </ErrorBoundary>
           </div>
         </main>
       </div>
