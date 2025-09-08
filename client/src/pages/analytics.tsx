@@ -27,6 +27,11 @@ export default function Analytics() {
     queryKey: ["/api/analytics/summary"],
   });
 
+  // Get URL search params to filter by research state/types from the Research page
+  const urlParams = new URLSearchParams(window.location.search);
+  const filterStates = urlParams.get('states')?.split(',') || [];
+  const filterTypes = urlParams.get('types')?.split(',') || [];
+
   // Compliance Trends Chart
   useEffect(() => {
     if (!trends || trendsLoading) return;
@@ -338,7 +343,7 @@ export default function Analytics() {
                   <div className="flex items-center justify-center h-full">
                     <div className="text-muted-foreground">Loading chart data...</div>
                   </div>
-                ) : totalRecords === 0 ? (
+                ) : totalRecords === 0 && !((summary as any)?.research?.totalPrograms > 0) ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
                       <i className="fas fa-map-marked-alt text-4xl text-muted-foreground mb-2"></i>
@@ -352,6 +357,120 @@ export default function Analytics() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Research Analytics Section */}
+          {((summary as any)?.research?.totalPrograms > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* State Profiles */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <i className="fas fa-map-marker-alt text-blue-600"></i>
+                    <span>State Profiles</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4" data-testid="state-profiles">
+                    {filterStates.length > 0 ? (
+                      <div className="text-sm text-muted-foreground mb-4">
+                        Filtered by states: {filterStates.join(', ')}
+                      </div>
+                    ) : null}
+                    {Object.entries((summary as any)?.research?.programsByState || {}).map(([state, count]) => (
+                      <div key={state} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-medium text-blue-800">{state}</span>
+                          </div>
+                          <span className="font-medium">{state}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold">{count}</div>
+                          <div className="text-xs text-muted-foreground">programs</div>
+                        </div>
+                      </div>
+                    ))}
+                    {Object.keys((summary as any)?.research?.programsByState || {}).length === 0 && (
+                      <div className="text-center py-4 text-muted-foreground">
+                        No state data available
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recent Changes */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <i className="fas fa-clock text-green-600"></i>
+                    <span>Recent Changes</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4" data-testid="recent-changes">
+                    {filterTypes.length > 0 ? (
+                      <div className="text-sm text-muted-foreground mb-4">
+                        Filtered by types: {filterTypes.join(', ')}
+                      </div>
+                    ) : null}
+                    <div className="text-center py-8">
+                      <i className="fas fa-history text-4xl text-muted-foreground mb-2"></i>
+                      <p className="text-muted-foreground">Recent Changes Coming Soon</p>
+                      <p className="text-sm text-muted-foreground">
+                        Change detection between research runs will appear here
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Research Summary Cards */}
+          {((summary as any)?.research?.totalPrograms > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Research Programs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600" data-testid="metric-research-programs">
+                    {(summary as any)?.research?.totalPrograms || 0}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Total programs discovered
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">States Covered</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600" data-testid="metric-states-covered">
+                    {(summary as any)?.metrics?.statesCovered || 0}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    States with research data
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Research Artifacts</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-purple-600" data-testid="metric-research-artifacts">
+                    {(summary as any)?.research?.totalArtifacts || 0}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Source documents processed
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </main>
       </div>
     </div>
