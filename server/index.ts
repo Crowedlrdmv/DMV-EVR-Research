@@ -42,6 +42,15 @@ app.use((req, res, next) => {
     const { initializeQueue } = await import("./queue/connection");
     await initializeQueue();
     log("✓ Queue system initialized");
+    
+    // Start scheduler engine
+    try {
+      const { scheduleService } = await import("./services/research/scheduleService");
+      await scheduleService.startSchedulerEngine();
+      log("✓ Research scheduler engine started");
+    } catch (error) {
+      log("✗ Scheduler engine failed:", String(error));
+    }
   } catch (error) {
     log("✗ Queue initialization failed:", String(error));
   }

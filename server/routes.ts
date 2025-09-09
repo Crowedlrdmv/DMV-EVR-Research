@@ -452,6 +452,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Research Schedule endpoints
+  app.get("/api/research/schedules", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { scheduleService } = await import("./services/research/scheduleService");
+      const schedules = await scheduleService.getSchedules();
+      res.json(schedules);
+    } catch (error) {
+      console.error("Error fetching research schedules:", error);
+      res.status(500).json({ error: "Failed to fetch research schedules" });
+    }
+  });
+
+  app.post("/api/research/schedules", requireBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { scheduleService } = await import("./services/research/scheduleService");
+      const schedule = await scheduleService.createSchedule(req.body);
+      res.status(201).json(schedule);
+    } catch (error) {
+      console.error("Error creating research schedule:", error);
+      res.status(500).json({ error: "Failed to create research schedule" });
+    }
+  });
+
+  app.get("/api/research/schedules/:id", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { scheduleService } = await import("./services/research/scheduleService");
+      const schedule = await scheduleService.getSchedule(req.params.id);
+      if (!schedule) {
+        return res.status(404).json({ error: "Schedule not found" });
+      }
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error fetching research schedule:", error);
+      res.status(500).json({ error: "Failed to fetch research schedule" });
+    }
+  });
+
+  app.put("/api/research/schedules/:id", requireBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { scheduleService } = await import("./services/research/scheduleService");
+      const schedule = await scheduleService.updateSchedule(req.params.id, req.body);
+      if (!schedule) {
+        return res.status(404).json({ error: "Schedule not found" });
+      }
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error updating research schedule:", error);
+      res.status(500).json({ error: "Failed to update research schedule" });
+    }
+  });
+
+  app.delete("/api/research/schedules/:id", requireBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { scheduleService } = await import("./services/research/scheduleService");
+      const deleted = await scheduleService.deleteSchedule(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Schedule not found" });
+      }
+      res.json({ message: "Schedule deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting research schedule:", error);
+      res.status(500).json({ error: "Failed to delete research schedule" });
+    }
+  });
+
+  app.get("/api/research/schedules/upcoming", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { scheduleService } = await import("./services/research/scheduleService");
+      const hours = parseInt(req.query.hours as string) || 24;
+      const upcoming = await scheduleService.getUpcomingExecutions(hours);
+      res.json(upcoming);
+    } catch (error) {
+      console.error("Error fetching upcoming executions:", error);
+      res.status(500).json({ error: "Failed to fetch upcoming executions" });
+    }
+  });
+
+  // Diagnostics and monitoring endpoints
+  app.get("/api/diagnostics/health", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { diagnosticsService } = await import("./services/diagnostics/diagnosticsService");
+      const health = await diagnosticsService.getSystemHealth();
+      res.json(health);
+    } catch (error) {
+      console.error("Error fetching system health:", error);
+      res.status(500).json({ error: "Failed to fetch system health" });
+    }
+  });
+
+  app.get("/api/diagnostics/logs", requireBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { diagnosticsService } = await import("./services/diagnostics/diagnosticsService");
+      const { limit, level, component, since } = req.query;
+      
+      const options: any = {};
+      if (limit) options.limit = parseInt(limit as string);
+      if (level) options.level = level as string;
+      if (component) options.component = component as string;
+      if (since) options.since = new Date(since as string);
+      
+      const logs = diagnosticsService.getLogs(options);
+      const stats = diagnosticsService.getLogStats();
+      
+      res.json({ logs, stats });
+    } catch (error) {
+      console.error("Error fetching logs:", error);
+      res.status(500).json({ error: "Failed to fetch logs" });
+    }
+  });
+
+  app.delete("/api/diagnostics/logs", requireBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { diagnosticsService } = await import("./services/diagnostics/diagnosticsService");
+      diagnosticsService.clearLogs();
+      res.json({ message: "Logs cleared successfully" });
+    } catch (error) {
+      console.error("Error clearing logs:", error);
+      res.status(500).json({ error: "Failed to clear logs" });
+    }
+  });
+
   app.get("/api/research/sources", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
     try {
       const { researchService } = await import("./services/research/researchService");
