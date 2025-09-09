@@ -19,10 +19,10 @@ export default function Research() {
   // Get URL search params for state management
   const urlParams = new URLSearchParams(window.location.search);
   const [selectedStates, setSelectedStates] = useState<string[]>(
-    urlParams.get('states')?.split(',') || ['CA', 'TX', 'WA', 'NY']
+    urlParams.get('states')?.split(',') || []
   );
   const [selectedDataTypes, setSelectedDataTypes] = useState<Array<'rules'|'emissions'|'inspections'|'bulletins'|'forms'>>(
-    (urlParams.get('dataTypes')?.split(',') as Array<'rules'|'emissions'|'inspections'|'bulletins'|'forms'>) || ['rules', 'emissions']
+    (urlParams.get('dataTypes')?.split(',') as Array<'rules'|'emissions'|'inspections'|'bulletins'|'forms'>) || []
   );
   const [depth, setDepth] = useState<'summary' | 'full'>(
     (urlParams.get('depth') as 'summary' | 'full') || 'summary'
