@@ -103,6 +103,7 @@ export const fetchArtifacts = pgTable("fetch_artifacts", {
 
 export const programs = pgTable("programs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").references(() => fetchJobs.id, { onDelete: "cascade" }),
   state: varchar("state", { length: 2 }).notNull(),
   type: programTypeEnum("type").notNull(),
   title: text("title").notNull(),
@@ -122,6 +123,7 @@ export const programs = pgTable("programs", {
   checkedAt: timestamp("checked_at"),
   isDemo: boolean("is_demo").default(false).notNull(),
 }, (table) => ({
+  jobIdIdx: index("programs_job_id_idx").on(table.jobId),
   stateTypeIdx: index("programs_state_type_idx").on(table.state, table.type),
   validFromToIdx: index("programs_valid_from_to_idx").on(table.validFrom, table.validTo),
   sourceValidIdx: index("programs_source_valid_idx").on(table.sourceValid),
@@ -218,6 +220,7 @@ export const stateSourcesRelations = relations(stateSources, ({ one }) => ({
 // State research pipeline relations
 export const fetchJobsRelations = relations(fetchJobs, ({ many }) => ({
   artifacts: many(fetchArtifacts),
+  programs: many(programs),
 }));
 
 export const fetchArtifactsRelations = relations(fetchArtifacts, ({ one, many }) => ({
@@ -229,6 +232,10 @@ export const fetchArtifactsRelations = relations(fetchArtifacts, ({ one, many })
 }));
 
 export const programsRelations = relations(programs, ({ one, many }) => ({
+  job: one(fetchJobs, {
+    fields: [programs.jobId],
+    references: [fetchJobs.id],
+  }),
   rawSource: one(fetchArtifacts, {
     fields: [programs.rawSourceId],
     references: [fetchArtifacts.id],
