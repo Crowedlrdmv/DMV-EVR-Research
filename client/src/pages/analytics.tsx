@@ -151,7 +151,7 @@ export default function Analytics() {
     }
   }, [trends, trendsLoading]);
 
-  // Region Breakdown Chart (dummy data for demonstration)
+  // Region Breakdown Chart (using real programsByState data)
   useEffect(() => {
     if (regionChartRef.current) {
       if (regionChartInstance.current) {
@@ -160,22 +160,29 @@ export default function Analytics() {
 
       const ctx = regionChartRef.current.getContext("2d");
       if (ctx) {
-        const totalRecords = (summary as any)?.metrics?.totalRecords || 0;
-        const hasData = totalRecords > 0;
+        const programsByState = (summary as any)?.research?.programsByState || {};
+        const hasData = Object.keys(programsByState).length > 0;
+        
+        // Use real data from the API
+        const labels = hasData ? Object.keys(programsByState) : ["No Data"];
+        const data = hasData ? Object.values(programsByState) : [1];
         
         const config: ChartConfiguration = {
           type: "doughnut",
           data: {
-            labels: hasData ? ["California", "Texas", "Florida", "New York", "Other"] : ["No Data"],
+            labels,
             datasets: [{
-              data: hasData ? [35, 20, 15, 12, 18] : [1],
+              data,
               backgroundColor: hasData ? [
                 "hsl(221.2, 83.2%, 53.3%)",
                 "hsl(142.1, 76.2%, 36.3%)",
                 "hsl(47.9, 95.8%, 53.1%)",
                 "hsl(0, 72.2%, 50.6%)",
-                "hsl(262.1, 83.3%, 57.8%)"
-              ] : ["hsl(214.3, 31.8%, 91.4%)"],
+                "hsl(262.1, 83.3%, 57.8%)",
+                "hsl(295, 100%, 85%)",
+                "hsl(240, 100%, 85%)",
+                "hsl(180, 100%, 85%)"
+              ].slice(0, labels.length) : ["hsl(214.3, 31.8%, 91.4%)"],
             }],
           },
           options: {

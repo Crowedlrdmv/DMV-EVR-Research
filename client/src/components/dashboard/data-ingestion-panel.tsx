@@ -9,7 +9,11 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function DataIngestionPanel() {
-  const [bearerToken, setBearerToken] = useState("sk-1234567890abcdef");
+  const [bearerToken, setBearerToken] = useState(() => {
+    // Try to get token from localStorage, fallback to test token
+    const storedToken = localStorage.getItem('research_bearer_token');
+    return storedToken || "test-token";
+  });
   const [showToken, setShowToken] = useState(false);
   const [dbClient, setDbClient] = useState("prisma");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -153,7 +157,13 @@ export default function DataIngestionPanel() {
                     id="bearer-token"
                     type={showToken ? "text" : "password"}
                     value={bearerToken}
-                    onChange={(e) => setBearerToken(e.target.value)}
+                    onChange={(e) => {
+                      setBearerToken(e.target.value);
+                      // Store token in localStorage for persistence
+                      if (e.target.value.length > 0) {
+                        localStorage.setItem('research_bearer_token', e.target.value);
+                      }
+                    }}
                     placeholder="Enter bearer token"
                     className="rounded-r-none"
                     data-testid="input-bearer-token"

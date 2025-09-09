@@ -319,13 +319,13 @@ export class ResearchService {
   async getJobStats(jobId: string): Promise<{ artifacts: number; programs: number }> {
     const [programCount] = await db
       .select({ count: count() })
-      .from(programs)
-      .where(eq(programs.jobId, jobId));
+      .from(researchPrograms)
+      .where(eq(researchPrograms.jobId, jobId));
 
     const [artifactCount] = await db
       .select({ count: count() })
-      .from(fetchArtifacts)
-      .where(eq(fetchArtifacts.jobId, jobId));
+      .from(researchArtifacts)
+      .where(eq(researchArtifacts.jobId, jobId));
 
     return {
       programs: programCount.count,

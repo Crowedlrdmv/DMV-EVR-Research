@@ -110,9 +110,13 @@ const fetchWithRetry = async (url: string, options: RequestInit = {}, retries = 
 
 // Bearer token for authentication - in a real app this would come from auth context
 const getBearerToken = (): string => {
-  // For demo purposes, using a placeholder token
-  // In production, this would come from auth context/localStorage
-  return "demo-research-token-12345";
+  // Try to get token from localStorage first, fallback to placeholder
+  const storedToken = localStorage.getItem('research_bearer_token');
+  if (storedToken && storedToken.length > 10) {
+    return storedToken;
+  }
+  // Use a working test token that matches our backend authentication
+  return "test-token";
 };
 
 // Environment flag checks

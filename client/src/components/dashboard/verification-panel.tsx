@@ -15,9 +15,11 @@ interface VerificationResult {
 
 export default function VerificationPanel() {
   const [testData, setTestData] = useState(`{
-  "vehicle_id": "ABC123",
+  "vehicle_id": "DMV_${Math.random().toString(36).substr(2, 6).toUpperCase()}",
   "compliance_status": "valid",
-  "expiry_date": "2024-12-31"
+  "expiry_date": "${new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}",
+  "state": "CA",
+  "inspection_type": "emissions"
 }`);
   const [localVerifications, setLocalVerifications] = useState<VerificationResult[]>([]);
   
