@@ -213,7 +213,7 @@ export class ChangeDetector {
     // Build query with proper where conditions
     let query = db.select().from(researchProgramChanges);
     if (conditions.length > 0) {
-      query = query.where(conditions.length === 1 ? conditions[0] : and(...conditions));
+      query = query.where(conditions.length === 1 ? conditions[0] : and(...conditions)) as any;
     }
     
     const allChanges = await query;
