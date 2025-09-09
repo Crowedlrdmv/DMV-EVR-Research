@@ -118,6 +118,90 @@ export class ScheduleService {
       .where(eq(researchSchedules.id, id));
   }
 
+  /**
+   * Executes a scheduled research job
+   */
+  async executeSchedule(schedule: ResearchSchedule): Promise<{ success: boolean; jobIds?: string[]; error?: string }> {
+    try {
+      console.log(`Executing scheduled research: ${schedule.name}`);
+      
+      // Import research service and start job
+      const { researchService } = await import('./researchService');
+      
+      const jobIds = await researchService.startResearchJob({
+        states: schedule.states,
+        dataTypes: schedule.dataTypes,
+        depth: schedule.depth,
+        since: undefined
+      });
+      
+      // Update last execution time
+      await this.updateLastRun(schedule.id);
+      
+      console.log(`Successfully executed schedule ${schedule.name}, started ${jobIds.length} jobs`);
+      
+      return { success: true, jobIds };
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Failed to execute schedule ${schedule.name}:`, error);
+      
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  /**
+   * Starts the scheduler engine to run all active schedules
+   */
+  async startSchedulerEngine(): Promise<void> {
+    console.log('Starting research scheduler engine...');
+    
+    // Start checking for schedules every minute
+    setInterval(async () => {
+      try {
+        const dueSchedules = await this.getSchedulesDueForExecution();
+        
+        for (const schedule of dueSchedules) {
+          if (schedule.nextRunAt && schedule.nextRunAt <= new Date()) {
+            // Execute the schedule in background
+            this.executeSchedule(schedule).catch(error => {
+              console.error(`Background execution failed for ${schedule.name}:`, error);
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Scheduler engine error:', error);
+      }
+    }, 60 * 1000); // Check every minute
+    
+    console.log('Scheduler engine started - checking for due schedules every minute');
+  }
+
+  /**
+   * Gets upcoming scheduled executions
+   */
+  async getUpcomingExecutions(hours: number = 24): Promise<any[]> {
+    const schedules = await db
+      .select()
+      .from(researchSchedules)
+      .where(eq(researchSchedules.isActive, true));
+    
+    const upcoming = [];
+    const cutoff = new Date(Date.now() + hours * 60 * 60 * 1000);
+    
+    for (const schedule of schedules) {
+      if (schedule.nextRunAt && schedule.nextRunAt <= cutoff) {
+        upcoming.push({
+          schedule,
+          nextExecution: schedule.nextRunAt,
+          timeUntil: schedule.nextRunAt.getTime() - Date.now()
+        });
+      }
+    }
+    
+    return upcoming.sort((a, b) => a.nextExecution.getTime() - b.nextExecution.getTime());
+  }
+
   // Generate human-readable description from cron expression
   describeCron(cronExpression: string): string {
     try {
