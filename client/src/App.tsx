@@ -7,6 +7,7 @@ import Dashboard from "@/pages/dashboard";
 import Analytics from "@/pages/analytics";
 import Exports from "@/pages/exports";
 import Research from "@/pages/research";
+import ResearchSchedulingPage from "@/pages/ResearchSchedulingPage";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/analytics" component={Analytics} />
       <Route path="/exports" component={Exports} />
       <Route path="/research" component={Research} />
+      <Route path="/scheduling" component={ResearchSchedulingPage} />
       <Route component={NotFound} />
     </Switch>
   );
