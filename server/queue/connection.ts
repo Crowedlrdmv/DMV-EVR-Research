@@ -103,7 +103,7 @@ export class DatabaseQueueConnection implements QueueConnection {
       depth: jobData.depth
     }));
     
-    return { id: job.id, name, data };
+    return { id: job.id, name, data: jobData };
   }
 
   async getJob(id: string): Promise<any> {

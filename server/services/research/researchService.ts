@@ -61,8 +61,11 @@ export class ResearchService {
             !(filters.status === 'running' && !job.finishedOn && job.processedOn)) {
           return false;
         }
-        if (filters.state && job.data.state !== filters.state.toUpperCase()) {
-          return false;
+        if (filters.state) {
+          const jobStates = Array.isArray(job.data?.states) ? job.data.states : (job.data?.state ? [job.data.state] : []);
+          if (!jobStates.includes(filters.state.toUpperCase())) {
+            return false;
+          }
         }
         return true;
       })
@@ -108,7 +111,7 @@ export class ResearchService {
   }
 
   async getResearchResults(filters: { state?: string; since?: string; jobId?: string } = {}) {
-    // Build base query
+    // Build base query - simplified to avoid null field issues
     let query = db
       .select({
         id: researchPrograms.id,
@@ -119,12 +122,7 @@ export class ResearchService {
         url: researchPrograms.sourceUrl,
         summary: researchPrograms.summary,
         lastUpdated: researchPrograms.lastUpdated,
-        createdAt: researchPrograms.firstSeenAt,
-        sourceValid: null, // These fields don't exist in researchPrograms
-        sourceReason: null,
-        httpStatus: null,
-        checkedAt: null,
-        isDemo: null
+        createdAt: researchPrograms.firstSeenAt
       })
       .from(researchPrograms)
       .orderBy(desc(researchPrograms.firstSeenAt))
@@ -144,7 +142,15 @@ export class ResearchService {
       filtered = filtered.filter(program => program.state === filters.state!.toUpperCase());
     }
     
-    return filtered;
+    // Add default values for missing fields
+    return filtered.map(result => ({
+      ...result,
+      sourceValid: null,
+      sourceReason: null,
+      httpStatus: null,
+      checkedAt: null,
+      isDemo: false
+    }));
   }
 
   async getResearchDeltas(filters: { state?: string; since?: string } = {}) {
