@@ -2,6 +2,7 @@ import { db } from '../../db';
 import { researchJobs, researchArtifacts, insertResearchArtifactSchema } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { programService } from './programService';
+import { changeDetector } from './changeDetector';
 
 export class JobProcessor {
   
@@ -140,6 +141,16 @@ export class JobProcessor {
         
         // Use stable_key deduplication logic
         const result = await programService.upsertProgram(programData);
+        
+        // Detect and record changes
+        const existingProgram = result.isNew ? null : result.program;
+        await changeDetector.detectAndRecordChanges(
+          jobId,
+          result.id,
+          existingProgram,
+          programData,
+          result.isNew
+        );
         
         // Link program to job
         await programService.linkProgramToJob(result.id, jobId);

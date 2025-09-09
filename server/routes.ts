@@ -373,6 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced deltas endpoint with change detection
   app.get("/api/research/deltas", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
     try {
       const { researchService } = await import("./services/research/researchService");
@@ -387,6 +388,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching research deltas:", error);
       res.status(500).json({ error: "Failed to fetch research deltas" });
+    }
+  });
+
+  // Change detection endpoint
+  app.get("/api/research/changes", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { changeDetector } = await import("./services/research/changeDetector");
+      const { jobId, since, changeType } = req.query;
+      
+      const filters: any = {};
+      if (jobId) filters.jobId = jobId as string;
+      if (since) filters.since = new Date(since as string);
+      if (changeType) filters.changeType = changeType as string;
+      
+      const [changes, statistics] = await Promise.all([
+        changeDetector.getChangesForJob(jobId as string || ''),
+        changeDetector.getChangeStatistics(filters)
+      ]);
+      
+      res.json({ changes, statistics });
+    } catch (error) {
+      console.error("Error fetching research changes:", error);
+      res.status(500).json({ error: "Failed to fetch research changes" });
     }
   });
 
