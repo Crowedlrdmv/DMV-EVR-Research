@@ -174,6 +174,40 @@ export class ResearchService {
     };
   }
 
+  async getResearchSources() {
+    // Get unique sources by state from actual artifacts in the database
+    const uniqueSources = await db
+      .selectDistinct({
+        state: fetchArtifacts.sourceId,
+        url: fetchArtifacts.url,
+        contentType: fetchArtifacts.contentType
+      })
+      .from(fetchArtifacts)
+      .orderBy(fetchArtifacts.sourceId);
+
+    // Group by state and create source objects
+    const sourcesByState: Record<string, any[]> = {};
+    
+    for (const source of uniqueSources) {
+      const stateCode = source.state?.split('-')[0] || 'UNKNOWN';
+      const dataType = source.state?.split('-')[1] || 'general';
+      
+      if (!sourcesByState[stateCode]) {
+        sourcesByState[stateCode] = [];
+      }
+      
+      sourcesByState[stateCode].push({
+        id: source.state,
+        name: `${stateCode} ${dataType.charAt(0).toUpperCase() + dataType.slice(1)}`,
+        supports: [dataType],
+        url: source.url,
+        contentType: source.contentType
+      });
+    }
+
+    return sourcesByState;
+  }
+
   async getJobStats(jobId: string): Promise<{ artifacts: number; programs: number }> {
     const [programCount] = await db
       .select({ count: count() })

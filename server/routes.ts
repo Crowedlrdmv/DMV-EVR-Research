@@ -391,18 +391,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/research/sources", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
     try {
-      // For MVP, return dummy adapter registry
-      const sources = {
-        "CA": [
-          { id: "ca-dmv-rules", name: "CA DMV Rules", supports: ["rules", "inspections"], url: "https://dmv.ca.gov/rules" },
-          { id: "ca-emissions", name: "CA Emissions Program", supports: ["emissions"], url: "https://dmv.ca.gov/emissions" }
-        ],
-        "TX": [
-          { id: "tx-dmv-programs", name: "TX DMV Programs", supports: ["rules", "inspections"], url: "https://dmv.tx.gov/programs" },
-          { id: "tx-fees", name: "TX Fee Schedule", supports: ["forms"], url: "https://dmv.tx.gov/fees" }
-        ]
-      };
-
+      const { researchService } = await import("./services/research/researchService");
+      const sources = await researchService.getResearchSources();
       res.json({ sources });
     } catch (error) {
       console.error("Error fetching research sources:", error);

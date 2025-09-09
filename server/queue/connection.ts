@@ -81,7 +81,7 @@ export class DatabaseQueueConnection implements QueueConnection {
       finishedOn: job.finishedAt?.getTime(),
       returnvalue: job.status === 'success' ? 'completed' : undefined,
       failedReason: job.errorText,
-      progress: job.status === 'running' ? 50 : (job.status === 'success' ? 100 : 0),
+      progress: job.progress,
     };
   }
 
@@ -108,7 +108,7 @@ export class DatabaseQueueConnection implements QueueConnection {
         finishedOn: job.finishedAt?.getTime(),
         returnvalue: job.status === 'success' ? 'completed' : undefined,
         failedReason: job.errorText,
-        progress: job.status === 'running' ? 50 : (job.status === 'success' ? 100 : 0),
+        progress: job.progress,
       }))
       .sort((a, b) => (b.finishedOn || b.processedOn || 0) - (a.finishedOn || a.processedOn || 0)); // Sort by most recent first
   }
@@ -119,9 +119,9 @@ export class DatabaseQueueConnection implements QueueConnection {
 
   private async processJob(jobId: string, data: any): Promise<void> {
     try {
-      // Update job to running
+      // Update job to running with initial progress
       await db.update(fetchJobs)
-        .set({ status: 'running', startedAt: new Date() })
+        .set({ status: 'running', startedAt: new Date(), progress: 10 })
         .where(eq(fetchJobs.id, jobId));
 
       // Import and run the research worker
@@ -133,6 +133,7 @@ export class DatabaseQueueConnection implements QueueConnection {
         .set({ 
           status: 'success', 
           finishedAt: new Date(),
+          progress: 100,
           statsJson: { completed: true, timestamp: new Date().toISOString() }
         })
         .where(eq(fetchJobs.id, jobId));
