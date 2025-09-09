@@ -46,6 +46,28 @@ export interface ResearchSummary {
   totalArtifacts: number;
 }
 
+export interface ResearchSchedule {
+  id: string;
+  name: string;
+  states: string[];
+  dataTypes: string[];
+  depth: ResearchDepth;
+  cronExpression: string;
+  isActive: boolean;
+  lastRunAt?: string;
+  nextRunAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSchedulePayload {
+  name: string;
+  states: string[];
+  dataTypes: string[];
+  depth: ResearchDepth;
+  cronExpression: string;
+}
+
 // Utility function to safely extract arrays from API responses
 export const asArray = <T,>(value: any, key?: string): T[] => {
   if (Array.isArray(value)) return value;
@@ -260,6 +282,92 @@ export const researchApi = {
   // Check if scheduling is enabled
   isScheduleEnabled: (): boolean => {
     return isResearchScheduleEnabled();
+  },
+
+  // Schedule management functions
+  getSchedules: async (): Promise<ResearchSchedule[]> => {
+    try {
+      const response = await fetchWithRetry('/api/research/schedules');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch schedules: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return asArray<ResearchSchedule>(data, 'schedules');
+    } catch (error) {
+      console.error('Error fetching schedules:', error);
+      toast({
+        title: "⚠️ Error Loading Schedules",
+        description: "Failed to load research schedules. Please try again.",
+        variant: "destructive",
+      });
+      return [];
+    }
+  },
+
+  createSchedule: async (payload: CreateSchedulePayload): Promise<ResearchSchedule | null> => {
+    try {
+      const response = await apiRequest('/api/research/schedules', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to create schedule: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return data.schedule;
+    } catch (error) {
+      console.error('Error creating schedule:', error);
+      toast({
+        title: "❌ Create Schedule Failed",
+        description: error instanceof Error ? error.message : "Failed to create schedule",
+        variant: "destructive",
+      });
+      return null;
+    }
+  },
+
+  updateSchedule: async (id: string, payload: Partial<CreateSchedulePayload>): Promise<ResearchSchedule | null> => {
+    try {
+      const response = await apiRequest(`/api/research/schedules/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to update schedule: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return data.schedule;
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+      toast({
+        title: "❌ Update Schedule Failed",
+        description: error instanceof Error ? error.message : "Failed to update schedule",
+        variant: "destructive",
+      });
+      return null;
+    }
+  },
+
+  deleteSchedule: async (id: string): Promise<boolean> => {
+    try {
+      const response = await apiRequest(`/api/research/schedules/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to delete schedule: ${response.statusText}`);
+      }
+      return true;
+    } catch (error) {
+      console.error('Error deleting schedule:', error);
+      toast({
+        title: "❌ Delete Schedule Failed",
+        description: "Failed to delete schedule. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
   }
 };
 
