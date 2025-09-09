@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { researchApi, formatJobDuration, getStatusColor, type ResearchJob } from "@/lib/researchApi";
+import { toast } from "@/hooks/use-toast";
 
 interface ResearchJobsTableProps {
   onJobSelect?: (jobId: string) => void;
@@ -13,6 +14,7 @@ interface ResearchJobsTableProps {
 
 export default function ResearchJobsTable({ onJobSelect }: ResearchJobsTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
 
   // Query jobs with conditional polling
   const { data: jobs, isLoading } = useQuery({
@@ -29,6 +31,31 @@ export default function ResearchJobsTable({ onJobSelect }: ResearchJobsTableProp
     },
   });
 
+  // Retry job mutation
+  const retryJobMutation = useMutation({
+    mutationFn: async (job: ResearchJob) => {
+      return researchApi.runResearch({
+        states: job.states,
+        dataTypes: job.dataTypes as Array<'rules'|'emissions'|'inspections'|'bulletins'|'forms'>,
+        depth: job.depth
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/research/jobs'] });
+      toast({
+        title: "Job Retried",
+        description: "Research job has been restarted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Retry Failed",
+        description: "Failed to retry the research job. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Get only last 25 jobs with safe array handling
   const safeJobs = Array.isArray(jobs) ? jobs : [];
   const displayJobs = safeJobs.slice(0, 25);
@@ -41,6 +68,10 @@ export default function ResearchJobsTable({ onJobSelect }: ResearchJobsTableProp
       newExpanded.add(jobId);
     }
     setExpandedRows(newExpanded);
+  };
+
+  const handleRetryJob = (job: ResearchJob) => {
+    retryJobMutation.mutate(job);
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -147,13 +178,23 @@ export default function ResearchJobsTable({ onJobSelect }: ResearchJobsTableProp
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge 
-                            className={`text-xs ${getStatusColor(job.status)}`}
-                            data-testid={`job-status-${job.status}`}
-                          >
-                            {job.status === 'running' && <i className="fas fa-spinner fa-spin mr-1"></i>}
-                            {job.status}
-                          </Badge>
+                          <div className="space-y-1">
+                            <Badge 
+                              className={`text-xs ${getStatusColor(job.status)}`}
+                              data-testid={`job-status-${job.status}`}
+                            >
+                              {job.status === 'running' && <i className="fas fa-spinner fa-spin mr-1"></i>}
+                              {job.status}
+                            </Badge>
+                            {job.status === 'running' && job.progress !== undefined && (
+                              <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                <div 
+                                  className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                                  style={{ width: `${Math.max(job.progress, 5)}%` }}
+                                ></div>
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="font-mono text-sm">
                           {formatJobDuration(job.startedAt, job.finishedAt)}
@@ -217,13 +258,23 @@ export default function ResearchJobsTable({ onJobSelect }: ResearchJobsTableProp
                               </div>
                             )}
 
-                            {/* Error Text */}
+                            {/* Error Text and Retry */}
                             {job.errorText && (
                               <div>
                                 <h4 className="font-medium mb-2 text-red-600">Error Details</h4>
-                                <div className="bg-red-50 border border-red-200 rounded p-3 text-sm">
+                                <div className="bg-red-50 border border-red-200 rounded p-3 text-sm mb-3">
                                   {job.errorText}
                                 </div>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleRetryJob(job)}
+                                  className="text-red-600 border-red-200 hover:bg-red-50"
+                                  data-testid={`button-retry-${job.id}`}
+                                >
+                                  <i className="fas fa-redo mr-2"></i>
+                                  Retry Job
+                                </Button>
                               </div>
                             )}
 

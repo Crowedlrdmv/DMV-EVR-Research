@@ -18,6 +18,7 @@ export interface ResearchJob {
   depth: ResearchDepth;
   startedAt: string;
   finishedAt?: string;
+  progress?: number;
   stats?: { artifacts?: number; programs?: number };
   errorText?: string;
   logs?: string[];
