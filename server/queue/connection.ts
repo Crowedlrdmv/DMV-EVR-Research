@@ -85,12 +85,14 @@ export class RedisQueueConnection implements QueueConnection {
 
 export class DatabaseQueueConnection implements QueueConnection {
   async addJob(name: string, data: any, options: any = {}): Promise<any> {
+    console.log('Adding job with data:', data);
     const jobData = insertResearchJobSchema.parse({
-      states: Array.isArray(data.states) ? data.states : [data.state || data.states],
+      states: Array.isArray(data.states) ? data.states : (data.state ? [data.state] : []),
       dataTypes: data.dataTypes,
       depth: data.depth || 'summary',
       status: 'queued'
     });
+    console.log('Parsed job data:', jobData);
 
     const [job] = await db.insert(researchJobs).values(jobData).returning();
     

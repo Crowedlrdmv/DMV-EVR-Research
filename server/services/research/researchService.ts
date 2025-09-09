@@ -35,7 +35,7 @@ export class ResearchService {
     // Create one job per state
     for (const state of request.states) {
       const job = await queueConnection.addJob('state-research', {
-        state: state.toUpperCase(),
+        states: [state.toUpperCase()], // Pass as array for consistency
         dataTypes: request.dataTypes,
         depth: request.depth,
         since: request.since
@@ -68,7 +68,7 @@ export class ResearchService {
       })
       .map(job => ({
         id: String(job.id || 'unknown'),
-        states: job.data?.state ? [job.data.state] : [],
+        states: Array.isArray(job.data?.states) ? job.data.states : (job.data?.state ? [job.data.state] : []),
         dataTypes: Array.isArray(job.data?.dataTypes) ? job.data.dataTypes : [],
         depth: job.data?.depth || 'summary',
         status: this.mapJobStatus(job),
@@ -95,7 +95,7 @@ export class ResearchService {
 
     return {
       id: String(job.id || 'unknown'),
-      states: job.data?.state ? [job.data.state] : [],
+      states: Array.isArray(job.data?.states) ? job.data.states : (job.data?.state ? [job.data.state] : []),
       dataTypes: Array.isArray(job.data?.dataTypes) ? job.data.dataTypes : [],
       depth: job.data?.depth || 'summary',
       status: this.mapJobStatus(job),
