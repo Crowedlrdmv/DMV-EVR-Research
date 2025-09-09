@@ -1,7 +1,7 @@
 import { queueConnection } from '../../queue/connection';
 import { db } from '../../db';
 import { fetchJobs, programs, fetchArtifacts } from '@shared/schema';
-import { eq, and, desc, count } from 'drizzle-orm';
+import { eq, and, desc, count, gte } from 'drizzle-orm';
 
 export interface StartResearchJobRequest {
   states: string[];
@@ -148,8 +148,53 @@ export class ResearchService {
   }
 
   async getResearchDeltas(filters: { state?: string; since?: string } = {}) {
-    // For MVP, return empty array - will implement with change detection
-    return [];
+    const cutoffDate = filters.since ? new Date(filters.since) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // Default to 7 days
+
+    // Get programs in date range with their creation and update timestamps
+    let query = db
+      .select({
+        id: programs.id,
+        title: programs.title,
+        url: programs.url,
+        state: programs.state,
+        type: programs.type,
+        jobId: programs.jobId,
+        createdAt: programs.createdAt,
+        lastUpdated: programs.lastUpdated,
+      })
+      .from(programs)
+      .where(gte(programs.createdAt, cutoffDate))
+      .orderBy(desc(programs.createdAt));
+
+    if (filters.state) {
+      query = query.where(and(
+        gte(programs.createdAt, cutoffDate),
+        eq(programs.state, filters.state.toUpperCase())
+      ));
+    }
+
+    const recentPrograms = await query;
+
+    // Identify changes based on creation and update patterns
+    const changes = recentPrograms.map(program => {
+      const isNew = program.createdAt >= cutoffDate;
+      const isUpdated = program.lastUpdated && program.lastUpdated > program.createdAt;
+
+      return {
+        id: program.id,
+        title: program.title,
+        url: program.url,
+        state: program.state,
+        type: program.type,
+        jobId: program.jobId,
+        changeType: isUpdated ? 'updated' : (isNew ? 'new' : 'unchanged'),
+        timestamp: program.lastUpdated || program.createdAt,
+        details: isUpdated ? 'Content or metadata updated' : (isNew ? 'Newly discovered program' : 'No changes')
+      };
+    });
+
+    // Return only actual changes (new or updated)
+    return changes.filter(change => change.changeType !== 'unchanged');
   }
 
   async getResearchStats() {

@@ -37,6 +37,10 @@ export default function Analytics() {
     queryKey: ["/api/research/analytics", { days: timeRange }],
   });
 
+  const { data: recentChanges, isLoading: changesLoading } = useQuery({
+    queryKey: ["/api/research/deltas", { since: new Date(Date.now() - parseInt(timeRange) * 24 * 60 * 60 * 1000).toISOString() }],
+  });
+
   // Get URL search params to filter by research state/types from the Research page
   const urlParams = new URLSearchParams(window.location.search);
   const filterStates = urlParams.get('states')?.split(',') || [];
@@ -580,13 +584,53 @@ export default function Analytics() {
                         Filtered by types: {filterTypes.join(', ')}
                       </div>
                     ) : null}
-                    <div className="text-center py-8">
-                      <i className="fas fa-history text-4xl text-muted-foreground mb-2"></i>
-                      <p className="text-muted-foreground">Recent Changes Coming Soon</p>
-                      <p className="text-sm text-muted-foreground">
-                        Change detection between research runs will appear here
-                      </p>
-                    </div>
+                    {changesLoading ? (
+                      <div className="text-center py-4">
+                        <div className="text-muted-foreground">Loading changes...</div>
+                      </div>
+                    ) : (recentChanges as any)?.length > 0 ? (
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {((recentChanges as any) || []).slice(0, 10).map((change: any, index: number) => (
+                          <div key={change.id || index} className="flex items-start space-x-3 p-3 bg-muted rounded-lg">
+                            <div className={`w-2 h-2 rounded-full mt-2 ${
+                              change.changeType === 'new' ? 'bg-green-500' : 
+                              change.changeType === 'updated' ? 'bg-blue-500' : 'bg-gray-500'
+                            }`}></div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                  change.changeType === 'new' ? 'bg-green-100 text-green-800' : 
+                                  change.changeType === 'updated' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {change.changeType === 'new' ? 'NEW' : change.changeType === 'updated' ? 'UPDATED' : 'UNCHANGED'}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {change.state} • {change.type}
+                                </span>
+                              </div>
+                              <h4 className="font-medium text-sm mt-1 truncate">{change.title}</h4>
+                              <p className="text-xs text-muted-foreground mt-1">{change.details}</p>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {new Date(change.timestamp).toLocaleDateString()} at {new Date(change.timestamp).toLocaleTimeString()}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {((recentChanges as any) || []).length > 10 && (
+                          <div className="text-center text-sm text-muted-foreground">
+                            Showing 10 of {(recentChanges as any).length} changes
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <i className="fas fa-history text-4xl text-muted-foreground mb-2"></i>
+                        <p className="text-muted-foreground">No Recent Changes</p>
+                        <p className="text-sm text-muted-foreground">
+                          No changes detected in the last {timeRange} days
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
