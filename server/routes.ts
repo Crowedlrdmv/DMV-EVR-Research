@@ -400,6 +400,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/research/analytics", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { researchService } = await import("./services/research/researchService");
+      const days = parseInt(req.query.days as string) || 30;
+      const analytics = await researchService.getResearchAnalytics(days);
+      res.json({ analytics });
+    } catch (error) {
+      console.error("Error fetching research analytics:", error);
+      res.status(500).json({ error: "Failed to fetch research analytics" });
+    }
+  });
+
   // Research schedule endpoints
   app.get("/api/research/schedules", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
     try {

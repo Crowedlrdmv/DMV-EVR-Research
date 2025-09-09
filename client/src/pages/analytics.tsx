@@ -15,9 +15,15 @@ export default function Analytics() {
   const complianceChartRef = useRef<HTMLCanvasElement>(null);
   const volumeChartRef = useRef<HTMLCanvasElement>(null);
   const regionChartRef = useRef<HTMLCanvasElement>(null);
+  const dataTypeCoverageChartRef = useRef<HTMLCanvasElement>(null);
+  const sourceValidationChartRef = useRef<HTMLCanvasElement>(null);
+  const programTrendsChartRef = useRef<HTMLCanvasElement>(null);
   const complianceChartInstance = useRef<Chart | null>(null);
   const volumeChartInstance = useRef<Chart | null>(null);
   const regionChartInstance = useRef<Chart | null>(null);
+  const dataTypeCoverageChartInstance = useRef<Chart | null>(null);
+  const sourceValidationChartInstance = useRef<Chart | null>(null);
+  const programTrendsChartInstance = useRef<Chart | null>(null);
 
   const { data: trends, isLoading: trendsLoading } = useQuery({
     queryKey: ["/api/analytics/trends", { days: timeRange }],
@@ -25,6 +31,10 @@ export default function Analytics() {
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["/api/analytics/summary"],
+  });
+
+  const { data: researchAnalytics, isLoading: researchLoading } = useQuery({
+    queryKey: ["/api/research/analytics", { days: timeRange }],
   });
 
   // Get URL search params to filter by research state/types from the Research page
@@ -179,6 +189,153 @@ export default function Analytics() {
     }
   }, [summary, summaryLoading]);
 
+  // Data Type Coverage Chart
+  useEffect(() => {
+    if (!researchAnalytics || researchLoading) return;
+
+    if (dataTypeCoverageChartRef.current) {
+      if (dataTypeCoverageChartInstance.current) {
+        dataTypeCoverageChartInstance.current.destroy();
+      }
+
+      const ctx = dataTypeCoverageChartRef.current.getContext("2d");
+      if (ctx) {
+        const dataTypeCoverage = (researchAnalytics as any)?.analytics?.dataTypeCoverage || {};
+        const hasData = Object.keys(dataTypeCoverage).length > 0;
+        
+        const labels = hasData ? Object.keys(dataTypeCoverage) : ["No Data"];
+        const data = hasData ? Object.values(dataTypeCoverage).map((states: any) => 
+          Object.values(states).reduce((sum: number, count: any) => sum + count, 0)
+        ) : [1];
+        
+        const config: ChartConfiguration = {
+          type: "doughnut",
+          data: {
+            labels,
+            datasets: [{
+              data,
+              backgroundColor: hasData ? [
+                "hsl(221.2, 83.2%, 53.3%)",
+                "hsl(142.1, 76.2%, 36.3%)",
+                "hsl(47.9, 95.8%, 53.1%)",
+                "hsl(0, 72.2%, 50.6%)",
+                "hsl(262.1, 83.3%, 57.8%)"
+              ] : ["hsl(214.3, 31.8%, 91.4%)"],
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: "right",
+              },
+            },
+          },
+        };
+        dataTypeCoverageChartInstance.current = new Chart(ctx, config);
+      }
+    }
+  }, [researchAnalytics, researchLoading]);
+
+  // Source Validation Chart
+  useEffect(() => {
+    if (!researchAnalytics || researchLoading) return;
+
+    if (sourceValidationChartRef.current) {
+      if (sourceValidationChartInstance.current) {
+        sourceValidationChartInstance.current.destroy();
+      }
+
+      const ctx = sourceValidationChartRef.current.getContext("2d");
+      if (ctx) {
+        const sourceValidation = (researchAnalytics as any)?.analytics?.sourceValidation || { valid: 0, invalid: 0 };
+        const hasData = sourceValidation.valid > 0 || sourceValidation.invalid > 0;
+        
+        const config: ChartConfiguration = {
+          type: "doughnut",
+          data: {
+            labels: hasData ? ["Valid Sources", "Invalid Sources"] : ["No Data"],
+            datasets: [{
+              data: hasData ? [sourceValidation.valid, sourceValidation.invalid] : [1],
+              backgroundColor: hasData ? [
+                "hsl(142.1, 76.2%, 36.3%)",
+                "hsl(0, 72.2%, 50.6%)"
+              ] : ["hsl(214.3, 31.8%, 91.4%)"],
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: "bottom",
+              },
+            },
+          },
+        };
+        sourceValidationChartInstance.current = new Chart(ctx, config);
+      }
+    }
+  }, [researchAnalytics, researchLoading]);
+
+  // Program Discovery Trends Chart
+  useEffect(() => {
+    if (!researchAnalytics || researchLoading) return;
+
+    if (programTrendsChartRef.current) {
+      if (programTrendsChartInstance.current) {
+        programTrendsChartInstance.current.destroy();
+      }
+
+      const ctx = programTrendsChartRef.current.getContext("2d");
+      if (ctx) {
+        const programTrends = (researchAnalytics as any)?.analytics?.programTrends || [];
+        const hasData = programTrends.length > 0;
+        
+        const config: ChartConfiguration = {
+          type: "line",
+          data: {
+            labels: hasData ? programTrends.map((trend: any) => 
+              new Date(trend.date).toLocaleDateString()
+            ) : ["No Data"],
+            datasets: [{
+              label: "Programs Discovered",
+              data: hasData ? programTrends.map((trend: any) => trend.count) : [0],
+              borderColor: "hsl(142.1, 76.2%, 36.3%)",
+              backgroundColor: "hsla(142.1, 76.2%, 36.3%, 0.1)",
+              tension: 0.4,
+              fill: true,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true,
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: {
+                  color: "hsl(214.3, 31.8%, 91.4%)",
+                },
+              },
+              x: {
+                grid: {
+                  color: "hsl(214.3, 31.8%, 91.4%)",
+                },
+              },
+            },
+          },
+        };
+        programTrendsChartInstance.current = new Chart(ctx, config);
+      }
+    }
+  }, [researchAnalytics, researchLoading]);
+
   // Cleanup charts on unmount
   useEffect(() => {
     return () => {
@@ -190,6 +347,15 @@ export default function Analytics() {
       }
       if (regionChartInstance.current) {
         regionChartInstance.current.destroy();
+      }
+      if (dataTypeCoverageChartInstance.current) {
+        dataTypeCoverageChartInstance.current.destroy();
+      }
+      if (sourceValidationChartInstance.current) {
+        sourceValidationChartInstance.current.destroy();
+      }
+      if (programTrendsChartInstance.current) {
+        programTrendsChartInstance.current.destroy();
       }
     };
   }, []);
@@ -466,6 +632,74 @@ export default function Analytics() {
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     Source documents processed
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Enhanced Research Analytics */}
+          {((summary as any)?.research?.totalPrograms > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Data Type Coverage */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <i className="fas fa-chart-pie text-blue-600"></i>
+                    <span>Data Type Coverage</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 w-full relative" data-testid="chart-data-type-coverage">
+                    {researchLoading ? (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-muted-foreground">Loading chart data...</div>
+                      </div>
+                    ) : (
+                      <canvas ref={dataTypeCoverageChartRef}></canvas>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Source Validation */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <i className="fas fa-shield-check text-green-600"></i>
+                    <span>Source Validation</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 w-full relative" data-testid="chart-source-validation">
+                    {researchLoading ? (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-muted-foreground">Loading chart data...</div>
+                      </div>
+                    ) : (
+                      <canvas ref={sourceValidationChartRef}></canvas>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Program Discovery Trends */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <i className="fas fa-chart-line text-purple-600"></i>
+                    <span>Discovery Trends</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 w-full relative" data-testid="chart-program-trends">
+                    {researchLoading ? (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-muted-foreground">Loading chart data...</div>
+                      </div>
+                    ) : (
+                      <canvas ref={programTrendsChartRef}></canvas>
+                    )}
                   </div>
                 </CardContent>
               </Card>

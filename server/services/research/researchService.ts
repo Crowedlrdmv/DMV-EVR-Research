@@ -174,6 +174,69 @@ export class ResearchService {
     };
   }
 
+  async getResearchAnalytics(days: number = 30) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    // Job completion trends
+    const jobTrends = await db
+      .select({
+        date: fetchJobs.createdAt,
+        status: fetchJobs.status,
+        state: fetchJobs.state,
+        programCount: count()
+      })
+      .from(fetchJobs)
+      .where(eq(fetchJobs.createdAt, cutoffDate))
+      .groupBy(fetchJobs.createdAt, fetchJobs.status, fetchJobs.state)
+      .orderBy(desc(fetchJobs.createdAt));
+
+    // Data type coverage
+    const dataTypeCoverage = await db
+      .select({
+        type: programs.type,
+        count: count(),
+        state: programs.state
+      })
+      .from(programs)
+      .groupBy(programs.type, programs.state);
+
+    // Source validation stats
+    const sourceValidation = await db
+      .select({
+        sourceValid: programs.sourceValid,
+        count: count()
+      })
+      .from(programs)
+      .groupBy(programs.sourceValid);
+
+    // Program discovery trends (programs found per day)
+    const programTrends = await db
+      .select({
+        date: programs.createdAt,
+        count: count()
+      })
+      .from(programs)
+      .where(eq(programs.createdAt, cutoffDate))
+      .groupBy(programs.createdAt)
+      .orderBy(desc(programs.createdAt));
+
+    return {
+      jobTrends,
+      dataTypeCoverage: dataTypeCoverage.reduce((acc: Record<string, any>, item) => {
+        if (!acc[item.type]) acc[item.type] = {};
+        acc[item.type][item.state] = item.count;
+        return acc;
+      }, {}),
+      sourceValidation: sourceValidation.reduce((acc: Record<string, number>, item) => {
+        const key = item.sourceValid ? 'valid' : 'invalid';
+        acc[key] = item.count;
+        return acc;
+      }, { valid: 0, invalid: 0 }),
+      programTrends
+    };
+  }
+
   async getResearchSources() {
     // Get unique sources by state from actual artifacts in the database
     const uniqueSources = await db
