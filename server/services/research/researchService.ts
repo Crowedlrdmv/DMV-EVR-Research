@@ -108,7 +108,7 @@ export class ResearchService {
   }
 
   async getResearchResults(filters: { state?: string; since?: string; jobId?: string } = {}) {
-    // Build the query without conditions first
+    // Build base query
     let query = db
       .select({
         id: programs.id,
@@ -126,27 +126,25 @@ export class ResearchService {
         checkedAt: programs.checkedAt,
         isDemo: programs.isDemo
       })
-      .from(programs);
+      .from(programs)
+      .orderBy(desc(programs.createdAt))
+      .limit(100);
 
-    // Build where conditions
-    const whereConditions = [];
+    // Execute query and filter in memory for simplicity
+    const results = await query;
+    
+    // Apply filters in memory
+    let filtered = results;
     
     if (filters.jobId) {
-      whereConditions.push(eq(programs.jobId, filters.jobId));
+      filtered = filtered.filter(program => program.jobId === filters.jobId);
     }
     
     if (filters.state) {
-      whereConditions.push(eq(programs.state, filters.state.toUpperCase()));
+      filtered = filtered.filter(program => program.state === filters.state!.toUpperCase());
     }
     
-    // Apply where conditions if any exist
-    if (whereConditions.length > 0) {
-      query = query.where(whereConditions.length === 1 ? whereConditions[0] : and(...whereConditions));
-    }
-
-    return await query
-      .orderBy(desc(programs.createdAt))
-      .limit(100);
+    return filtered;
   }
 
   async getResearchDeltas(filters: { state?: string; since?: string } = {}) {

@@ -7,7 +7,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { researchApi, formatJobDuration, getStatusColor, type ResearchJob } from "@/lib/researchApi";
 
-export default function ResearchJobsTable() {
+interface ResearchJobsTableProps {
+  onJobSelect?: (jobId: string) => void;
+}
+
+export default function ResearchJobsTable({ onJobSelect }: ResearchJobsTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // Query jobs with conditional polling
@@ -194,6 +198,24 @@ export default function ResearchJobsTable() {
                                 </div>
                               </div>
                             </div>
+
+                            {/* Actions */}
+                            {job.status === 'success' && (job.stats?.programs || 0) > 0 && onJobSelect && (
+                              <div className="flex items-center justify-between pt-4 border-t">
+                                <div className="text-sm text-muted-foreground">
+                                  Found {job.stats?.programs || 0} programs in this job
+                                </div>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => onJobSelect(job.id)}
+                                  data-testid={`button-view-results-${job.id}`}
+                                >
+                                  <i className="fas fa-eye mr-2"></i>
+                                  View Results
+                                </Button>
+                              </div>
+                            )}
 
                             {/* Error Text */}
                             {job.errorText && (

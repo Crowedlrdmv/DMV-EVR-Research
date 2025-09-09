@@ -27,6 +27,10 @@ export default function Research() {
   const [depth, setDepth] = useState<'summary' | 'full'>(
     (urlParams.get('depth') as 'summary' | 'full') || 'summary'
   );
+  
+  // Job selection state for linking jobs to results
+  const [selectedJobId, setSelectedJobId] = useState<string>("");
+  const [showJobSpecificResults, setShowJobSpecificResults] = useState(false);
 
   // Update URL when state changes
   useEffect(() => {
@@ -51,6 +55,18 @@ export default function Research() {
     
     const analyticsUrl = `/analytics?${params.toString()}`;
     setLocation(analyticsUrl);
+  };
+
+  // Handle job selection from jobs table
+  const handleJobSelect = (jobId: string) => {
+    setSelectedJobId(jobId);
+    setShowJobSpecificResults(true);
+  };
+
+  // Handle switching between latest results and job-specific results
+  const handleShowLatestResults = () => {
+    setSelectedJobId("");
+    setShowJobSpecificResults(false);
   };
 
   return (
@@ -108,7 +124,7 @@ export default function Research() {
               </Badge>
             </div>
             <ErrorBoundary>
-              <ResearchJobsTable />
+              <ResearchJobsTable onJobSelect={handleJobSelect} />
             </ErrorBoundary>
           </div>
 
@@ -117,7 +133,27 @@ export default function Research() {
           {/* Results Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Research Results</h2>
+              <div className="flex items-center space-x-4">
+                <h2 className="text-lg font-semibold text-foreground">
+                  {showJobSpecificResults ? "Job-Specific Results" : "Research Results"}
+                </h2>
+                {showJobSpecificResults && (
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline" className="text-xs">
+                      Job: {selectedJobId}
+                    </Badge>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={handleShowLatestResults}
+                      data-testid="button-show-latest"
+                    >
+                      <i className="fas fa-arrow-left mr-1"></i>
+                      Back to Latest
+                    </Button>
+                  </div>
+                )}
+              </div>
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -129,7 +165,11 @@ export default function Research() {
               </Button>
             </div>
             <ErrorBoundary>
-              <ResearchResultsTable />
+              <ResearchResultsTable 
+                selectedJobId={selectedJobId}
+                showJobSpecific={showJobSpecificResults}
+                onJobSelect={handleJobSelect}
+              />
             </ErrorBoundary>
           </div>
         </main>

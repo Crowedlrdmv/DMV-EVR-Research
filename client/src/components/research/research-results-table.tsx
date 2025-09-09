@@ -10,11 +10,21 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { researchApi, getTypeColor, type ResearchProgram, type ResearchJob, asArray } from "@/lib/researchApi";
 import ProgramDetailModal from "./program-detail-modal";
 
-export default function ResearchResultsTable() {
+interface ResearchResultsTableProps {
+  selectedJobId?: string;
+  showJobSpecific?: boolean;
+  onJobSelect?: (jobId: string) => void;
+}
+
+export default function ResearchResultsTable({ 
+  selectedJobId = "", 
+  showJobSpecific = false,
+  onJobSelect
+}: ResearchResultsTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [selectedJobId, setSelectedJobId] = useState<string>("");
+  const [internalJobId, setInternalJobId] = useState<string>("");
   const [selectedProgram, setSelectedProgram] = useState<ResearchProgram | null>(null);
   const [showProgramModal, setShowProgramModal] = useState(false);
 
@@ -25,11 +35,14 @@ export default function ResearchResultsTable() {
     refetchInterval: 3000, // Poll for job updates
   });
 
+  // Determine which job ID to use for filtering
+  const activeJobId = showJobSpecific ? selectedJobId : internalJobId;
+  
   // Fetch results based on selected job
   const { data: allResults, isLoading } = useQuery({
-    queryKey: ['/api/research/results', selectedJobId],
+    queryKey: ['/api/research/results', activeJobId],
     queryFn: () => researchApi.getResults({ 
-      jobId: (selectedJobId && selectedJobId !== 'all') ? selectedJobId : undefined 
+      jobId: (activeJobId && activeJobId !== 'all') ? activeJobId : undefined 
     }),
     enabled: true, // Always enabled, but will show all results when no job selected
   });
@@ -175,7 +188,7 @@ export default function ResearchResultsTable() {
     setSearchQuery("");
     setSelectedStates([]);
     setSelectedTypes([]);
-    setSelectedJobId("");
+    setInternalJobId("");
   };
 
   const handleProgramClick = (program: ResearchProgram) => {
@@ -216,7 +229,7 @@ export default function ResearchResultsTable() {
           <CardTitle className="flex items-center gap-2">
             <i className="fas fa-table text-lg"></i>
             Research Results
-            {selectedJobId && (
+            {activeJobId && (
               <Badge variant="outline" className="ml-2">
                 Job-Specific Results
               </Badge>
@@ -233,7 +246,7 @@ export default function ResearchResultsTable() {
             {availableJobs.length > 0 && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Filter by Research Job</label>
-                <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                <Select value={showJobSpecific ? selectedJobId : internalJobId} onValueChange={showJobSpecific ? (onJobSelect || (() => {})) : setInternalJobId}>
                   <SelectTrigger data-testid="select-job-filter">
                     <SelectValue placeholder="Show all results (from all jobs)" />
                   </SelectTrigger>
@@ -253,7 +266,7 @@ export default function ResearchResultsTable() {
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedJobId && (
+                {activeJobId && (
                   <div className="text-xs text-muted-foreground">
                     Showing results only from the selected research job
                   </div>
