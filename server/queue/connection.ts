@@ -86,9 +86,19 @@ export class DatabaseQueueConnection implements QueueConnection {
   }
 
   async getJobs(statuses: string[]): Promise<any[]> {
+    // Map BullMQ status names to database status names
+    const statusMap: Record<string, string> = {
+      'waiting': 'queued',
+      'active': 'running', 
+      'completed': 'success',
+      'failed': 'error'
+    };
+
+    const dbStatuses = statuses.map(status => statusMap[status] || status);
     const jobs = await db.select().from(fetchJobs);
+    
     return jobs
-      .filter(job => statuses.includes(job.status))
+      .filter(job => dbStatuses.includes(job.status))
       .map(job => ({
         id: job.id,
         name: 'state-research',
@@ -99,7 +109,8 @@ export class DatabaseQueueConnection implements QueueConnection {
         returnvalue: job.status === 'success' ? 'completed' : undefined,
         failedReason: job.errorText,
         progress: job.status === 'running' ? 50 : (job.status === 'success' ? 100 : 0),
-      }));
+      }))
+      .sort((a, b) => (b.finishedOn || b.processedOn || 0) - (a.finishedOn || a.processedOn || 0)); // Sort by most recent first
   }
 
   async close(): Promise<void> {
