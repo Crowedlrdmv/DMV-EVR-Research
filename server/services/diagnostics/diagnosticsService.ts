@@ -253,11 +253,11 @@ export class DiagnosticsService {
         db.select({ count: count() }).from(researchProgramChanges),
         db.select({ 
           startedAt: researchJobs.startedAt, 
-          endedAt: researchJobs.endedAt,
+          finishedAt: researchJobs.finishedAt,
           status: researchJobs.status
         }).from(researchJobs)
-          .where(sql`${researchJobs.endedAt} IS NOT NULL`)
-          .orderBy(desc(researchJobs.endedAt))
+          .where(sql`${researchJobs.finishedAt} IS NOT NULL`)
+          .orderBy(desc(researchJobs.finishedAt))
           .limit(100)
       ]);
       
@@ -274,10 +274,10 @@ export class DiagnosticsService {
       let avgJobDuration = 0;
       if (recentJobs.length > 0) {
         const durations = recentJobs
-          .filter(job => job.startedAt && job.endedAt)
+          .filter(job => job.startedAt && job.finishedAt)
           .map(job => {
             const start = new Date(job.startedAt!).getTime();
-            const end = new Date(job.endedAt!).getTime();
+            const end = new Date(job.finishedAt!).getTime();
             return end - start;
           });
         
