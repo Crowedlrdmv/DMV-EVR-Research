@@ -78,6 +78,7 @@ export const fetchJobs = pgTable("fetch_jobs", {
   status: jobStatusEnum("status").default("queued").notNull(),
   startedAt: timestamp("started_at"),
   finishedAt: timestamp("finished_at"),
+  progress: integer("progress").default(0).notNull(), // Progress percentage 0-100
   statsJson: jsonb("stats_json"),
   errorText: text("error_text"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
