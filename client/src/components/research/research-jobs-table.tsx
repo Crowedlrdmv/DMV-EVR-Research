@@ -113,20 +113,28 @@ export default function ResearchJobsTable() {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {job.states.map(state => (
-                              <Badge key={state} variant="outline" className="text-xs">
-                                {state}
-                              </Badge>
-                            ))}
+                            {Array.isArray(job.states) && job.states.length > 0 ? (
+                              job.states.map(state => (
+                                <Badge key={state} variant="outline" className="text-xs">
+                                  {state}
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-muted-foreground text-xs">No states</span>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {job.dataTypes.map(type => (
-                              <Badge key={type} variant="secondary" className="text-xs">
-                                {type}
-                              </Badge>
-                            ))}
+                            {Array.isArray(job.dataTypes) && job.dataTypes.length > 0 ? (
+                              job.dataTypes.map(type => (
+                                <Badge key={type} variant="secondary" className="text-xs">
+                                  {type}
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-muted-foreground text-xs">No types</span>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -147,7 +155,7 @@ export default function ResearchJobsTable() {
                           {formatJobDuration(job.startedAt, job.finishedAt)}
                         </TableCell>
                         <TableCell className="text-center">
-                          {job.stats?.artifacts || 0}
+                          {job.stats?.artifacts ?? 0}
                         </TableCell>
                         <TableCell>
                           {job.errorText ? (
@@ -180,8 +188,8 @@ export default function ResearchJobsTable() {
                               <div>
                                 <h4 className="font-medium mb-2">Configuration</h4>
                                 <div className="space-y-1 text-sm">
-                                  <div>States: {job.states.join(', ')}</div>
-                                  <div>Data Types: {job.dataTypes.join(', ')}</div>
+                                  <div>States: {Array.isArray(job.states) ? job.states.join(', ') : 'None'}</div>
+                                  <div>Data Types: {Array.isArray(job.dataTypes) ? job.dataTypes.join(', ') : 'None'}</div>
                                   <div>Research Depth: {job.depth}</div>
                                 </div>
                               </div>
@@ -198,7 +206,7 @@ export default function ResearchJobsTable() {
                             )}
 
                             {/* Recent Logs */}
-                            {job.logs && job.logs.length > 0 && (
+                            {Array.isArray(job.logs) && job.logs.length > 0 && (
                               <div>
                                 <h4 className="font-medium mb-2">Recent Logs (Last 30 lines)</h4>
                                 <div className="bg-gray-900 text-green-400 p-3 rounded font-mono text-xs max-h-64 overflow-y-auto">
@@ -213,14 +221,18 @@ export default function ResearchJobsTable() {
                             <div>
                               <h4 className="font-medium mb-2">State Progress</h4>
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {job.states.map(state => (
-                                  <div key={state} className="flex items-center justify-between p-2 bg-background rounded border">
-                                    <span className="font-mono text-sm">{state}</span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {job.status === 'success' ? 'Complete' : 'Pending'}
-                                    </Badge>
-                                  </div>
-                                ))}
+                                {Array.isArray(job.states) && job.states.length > 0 ? (
+                                  job.states.map(state => (
+                                    <div key={state} className="flex items-center justify-between p-2 bg-background rounded border">
+                                      <span className="font-mono text-sm">{state}</span>
+                                      <Badge variant="outline" className="text-xs">
+                                        {job.status === 'success' ? 'Complete' : 'Pending'}
+                                      </Badge>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="text-muted-foreground text-sm">No states configured</div>
+                                )}
                               </div>
                             </div>
                           </div>

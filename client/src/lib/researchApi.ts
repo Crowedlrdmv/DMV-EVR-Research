@@ -315,6 +315,7 @@ export const researchApi = {
     try {
       const response = await apiRequest('/api/research/schedules', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!response.ok) {
@@ -338,6 +339,7 @@ export const researchApi = {
     try {
       const response = await apiRequest(`/api/research/schedules/${id}`, {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!response.ok) {

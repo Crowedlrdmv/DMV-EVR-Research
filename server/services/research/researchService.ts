@@ -12,13 +12,15 @@ export interface StartResearchJobRequest {
 
 export interface ResearchJobSummary {
   id: string;
-  state: string;
+  states: string[];
   dataTypes: string[];
+  depth: string;
   status: string;
-  startedAt?: Date;
-  finishedAt?: Date;
-  error?: string;
-  stats?: any;
+  startedAt: string;
+  finishedAt?: string;
+  errorText?: string;
+  stats?: { artifacts?: number; programs?: number };
+  logs?: string[];
 }
 
 export class ResearchService {
@@ -65,14 +67,16 @@ export class ResearchService {
         return true;
       })
       .map(job => ({
-        id: job.id,
-        state: job.data.state,
-        dataTypes: job.data.dataTypes,
+        id: String(job.id || 'unknown'),
+        states: job.data?.state ? [job.data.state] : [],
+        dataTypes: Array.isArray(job.data?.dataTypes) ? job.data.dataTypes : [],
+        depth: job.data?.depth || 'summary',
         status: this.mapJobStatus(job),
-        startedAt: job.processedOn ? new Date(job.processedOn) : undefined,
-        finishedAt: job.finishedOn ? new Date(job.finishedOn) : undefined,
-        error: job.failedReason,
-        stats: job.opts?.stats
+        startedAt: job.processedOn ? new Date(job.processedOn).toISOString() : new Date().toISOString(),
+        finishedAt: job.finishedOn ? new Date(job.finishedOn).toISOString() : undefined,
+        errorText: job.failedReason || undefined,
+        stats: job.opts?.stats || { artifacts: 0, programs: 0 },
+        logs: Array.isArray(job.logs) ? job.logs : []
       }));
   }
 
@@ -81,14 +85,16 @@ export class ResearchService {
     if (!job) return null;
 
     return {
-      id: job.id,
-      state: job.data.state,
-      dataTypes: job.data.dataTypes,
+      id: String(job.id || 'unknown'),
+      states: job.data?.state ? [job.data.state] : [],
+      dataTypes: Array.isArray(job.data?.dataTypes) ? job.data.dataTypes : [],
+      depth: job.data?.depth || 'summary',
       status: this.mapJobStatus(job),
-      startedAt: job.processedOn ? new Date(job.processedOn) : undefined,
-      finishedAt: job.finishedOn ? new Date(job.finishedOn) : undefined,
-      error: job.failedReason,
-      stats: job.opts?.stats
+      startedAt: job.processedOn ? new Date(job.processedOn).toISOString() : new Date().toISOString(),
+      finishedAt: job.finishedOn ? new Date(job.finishedOn).toISOString() : undefined,
+      errorText: job.failedReason || undefined,
+      stats: job.opts?.stats || { artifacts: 0, programs: 0 },
+      logs: Array.isArray(job.logs) ? job.logs : []
     };
   }
 
