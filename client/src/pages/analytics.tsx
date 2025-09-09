@@ -165,7 +165,7 @@ export default function Analytics() {
         
         // Use real data from the API
         const labels = hasData ? Object.keys(programsByState) : ["No Data"];
-        const data = hasData ? Object.values(programsByState) : [1];
+        const data = hasData ? Object.values(programsByState).map(Number) : [1];
         
         const config: ChartConfiguration = {
           type: "doughnut",
