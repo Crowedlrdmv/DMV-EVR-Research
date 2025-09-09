@@ -1,7 +1,7 @@
 import { Queue, Worker, QueueEvents } from 'bullmq';
 import IORedis from 'ioredis';
 import { db } from '../db';
-import { fetchJobs, insertFetchJobSchema } from '@shared/schema';
+import { researchJobs, insertResearchJobSchema } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
 export interface QueueConnection {
@@ -53,14 +53,14 @@ export class RedisQueueConnection implements QueueConnection {
 
 export class DatabaseQueueConnection implements QueueConnection {
   async addJob(name: string, data: any, options: any = {}): Promise<any> {
-    const jobData = insertFetchJobSchema.parse({
-      state: data.state,
+    const jobData = insertResearchJobSchema.parse({
+      states: Array.isArray(data.states) ? data.states : [data.state || data.states],
       dataTypes: data.dataTypes,
-      status: 'queued',
-      statsJson: options.stats || {}
+      depth: data.depth || 'summary',
+      status: 'queued'
     });
 
-    const [job] = await db.insert(fetchJobs).values(jobData).returning();
+    const [job] = await db.insert(researchJobs).values(jobData).returning();
     
     // Simulate job processing in next tick
     process.nextTick(() => this.processJob(job.id, data));
@@ -69,19 +69,19 @@ export class DatabaseQueueConnection implements QueueConnection {
   }
 
   async getJob(id: string): Promise<any> {
-    const [job] = await db.select().from(fetchJobs).where(eq(fetchJobs.id, id));
+    const [job] = await db.select().from(researchJobs).where(eq(researchJobs.id, id));
     if (!job) return null;
     
     return {
       id: job.id,
       name: 'state-research',
-      data: { state: job.state, dataTypes: job.dataTypes },
-      opts: { stats: job.statsJson },
+      data: { states: job.states, dataTypes: job.dataTypes, depth: job.depth },
+      opts: {},
       processedOn: job.startedAt?.getTime(),
       finishedOn: job.finishedAt?.getTime(),
-      returnvalue: job.status === 'success' ? 'completed' : undefined,
-      failedReason: job.errorText,
-      progress: job.progress,
+      returnvalue: job.status === 'succeeded' ? 'completed' : undefined,
+      failedReason: job.errorMessage,
+      progress: job.status === 'succeeded' ? 100 : job.status === 'running' ? 50 : 0,
     };
   }
 
@@ -90,25 +90,25 @@ export class DatabaseQueueConnection implements QueueConnection {
     const statusMap: Record<string, string> = {
       'waiting': 'queued',
       'active': 'running', 
-      'completed': 'success',
-      'failed': 'error'
+      'completed': 'succeeded',
+      'failed': 'failed'
     };
 
     const dbStatuses = statuses.map(status => statusMap[status] || status);
-    const jobs = await db.select().from(fetchJobs);
+    const jobs = await db.select().from(researchJobs);
     
     return jobs
       .filter(job => dbStatuses.includes(job.status))
       .map(job => ({
         id: job.id,
         name: 'state-research',
-        data: { state: job.state, dataTypes: job.dataTypes },
-        opts: { stats: job.statsJson },
+        data: { states: job.states, dataTypes: job.dataTypes, depth: job.depth },
+        opts: {},
         processedOn: job.startedAt?.getTime(),
         finishedOn: job.finishedAt?.getTime(),
-        returnvalue: job.status === 'success' ? 'completed' : undefined,
-        failedReason: job.errorText,
-        progress: job.progress,
+        returnvalue: job.status === 'succeeded' ? 'completed' : undefined,
+        failedReason: job.errorMessage,
+        progress: job.status === 'succeeded' ? 100 : job.status === 'running' ? 50 : 0,
       }))
       .sort((a, b) => (b.finishedOn || b.processedOn || 0) - (a.finishedOn || a.processedOn || 0)); // Sort by most recent first
   }
@@ -119,34 +119,32 @@ export class DatabaseQueueConnection implements QueueConnection {
 
   private async processJob(jobId: string, data: any): Promise<void> {
     try {
-      // Update job to running with initial progress
-      await db.update(fetchJobs)
-        .set({ status: 'running', startedAt: new Date(), progress: 10 })
-        .where(eq(fetchJobs.id, jobId));
+      // Update job to running
+      await db.update(researchJobs)
+        .set({ status: 'running', startedAt: new Date() })
+        .where(eq(researchJobs.id, jobId));
 
       // Import and run the research worker
       const workerModule = await import('../workers/researchWorker');
       await workerModule.processResearchJob(jobId, data);
 
-      // Update job to success
-      await db.update(fetchJobs)
+      // Update job to succeeded
+      await db.update(researchJobs)
         .set({ 
-          status: 'success', 
-          finishedAt: new Date(),
-          progress: 100,
-          statsJson: { completed: true, timestamp: new Date().toISOString() }
+          status: 'succeeded', 
+          finishedAt: new Date()
         })
-        .where(eq(fetchJobs.id, jobId));
+        .where(eq(researchJobs.id, jobId));
 
     } catch (error) {
       console.error('Database queue job failed:', error);
-      await db.update(fetchJobs)
+      await db.update(researchJobs)
         .set({ 
-          status: 'error', 
+          status: 'failed', 
           finishedAt: new Date(),
-          errorText: error instanceof Error ? error.message : 'Unknown error'
+          errorMessage: error instanceof Error ? error.message : 'Unknown error'
         })
-        .where(eq(fetchJobs.id, jobId));
+        .where(eq(researchJobs.id, jobId));
     }
   }
 }

@@ -1,6 +1,6 @@
 import { queueConnection } from '../../queue/connection';
 import { db } from '../../db';
-import { fetchJobs, programs, fetchArtifacts } from '@shared/schema';
+import { researchJobs, researchPrograms, researchArtifacts } from '@shared/schema';
 import { eq, and, desc, count, gte } from 'drizzle-orm';
 
 export interface StartResearchJobRequest {
