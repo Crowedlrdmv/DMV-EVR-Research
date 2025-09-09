@@ -160,9 +160,9 @@ export class DatabaseQueueConnection implements QueueConnection {
         .set({ status: 'running', startedAt: new Date() })
         .where(eq(researchJobs.id, jobId));
 
-      // Import and run the research worker
-      const workerModule = await import('../workers/researchWorker');
-      await workerModule.processResearchJob(jobId, data);
+      // Import and run the job processor
+      const { jobProcessor } = await import('../services/research/jobProcessor');
+      await jobProcessor.processResearchJob(jobId, data);
 
       // Update job to succeeded
       await db.update(researchJobs)

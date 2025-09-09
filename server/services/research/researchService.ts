@@ -198,16 +198,16 @@ export class ResearchService {
   }
 
   async getResearchStats() {
-    const [totalPrograms] = await db.select({ count: count() }).from(programs);
-    const [totalArtifacts] = await db.select({ count: count() }).from(fetchArtifacts);
+    const [totalPrograms] = await db.select({ count: count() }).from(researchPrograms);
+    const [totalArtifacts] = await db.select({ count: count() }).from(researchArtifacts);
     
     // Get programs by state
     const programsByState = await db.select({
-      state: programs.state,
+      state: researchPrograms.state,
       count: count()
     })
-    .from(programs)
-    .groupBy(programs.state);
+    .from(researchPrograms)
+    .groupBy(researchPrograms.state);
 
     return {
       totalPrograms: totalPrograms.count,
