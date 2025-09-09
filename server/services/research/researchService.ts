@@ -55,7 +55,7 @@ export class ResearchService {
   async getJobs(filters: { status?: string; state?: string } = {}): Promise<ResearchJobSummary[]> {
     const queueJobs = await queueConnection.getJobs(['waiting', 'active', 'completed', 'failed']);
     
-    return queueJobs
+    const jobs = queueJobs
       .filter(job => {
         if (filters.status && job.returnvalue !== filters.status && 
             !(filters.status === 'running' && !job.finishedOn && job.processedOn)) {
@@ -78,6 +78,15 @@ export class ResearchService {
         stats: job.opts?.stats || { artifacts: 0, programs: 0 },
         logs: Array.isArray(job.logs) ? job.logs : []
       }));
+
+    // Enhance with actual database stats for completed jobs
+    for (const job of jobs) {
+      if (job.status === 'success') {
+        job.stats = await this.getJobStats(job.id);
+      }
+    }
+
+    return jobs;
   }
 
   async getJob(id: string): Promise<ResearchJobSummary | null> {
@@ -99,24 +108,25 @@ export class ResearchService {
   }
 
   async getResearchResults(filters: { state?: string; since?: string; jobId?: string } = {}) {
-    const baseSelect = {
-      id: programs.id,
-      jobId: programs.jobId,
-      state: programs.state,
-      type: programs.type,
-      title: programs.title,
-      url: programs.url,
-      summary: programs.summary,
-      lastUpdated: programs.lastUpdated,
-      createdAt: programs.createdAt,
-      sourceValid: programs.sourceValid,
-      sourceReason: programs.sourceReason,
-      httpStatus: programs.httpStatus,
-      checkedAt: programs.checkedAt,
-      isDemo: programs.isDemo
-    };
-
-    let query = db.select(baseSelect).from(programs);
+    // Build the query without conditions first
+    let query = db
+      .select({
+        id: programs.id,
+        jobId: programs.jobId,
+        state: programs.state,
+        type: programs.type,
+        title: programs.title,
+        url: programs.url,
+        summary: programs.summary,
+        lastUpdated: programs.lastUpdated,
+        createdAt: programs.createdAt,
+        sourceValid: programs.sourceValid,
+        sourceReason: programs.sourceReason,
+        httpStatus: programs.httpStatus,
+        checkedAt: programs.checkedAt,
+        isDemo: programs.isDemo
+      })
+      .from(programs);
 
     // Build where conditions
     const whereConditions = [];
@@ -163,6 +173,23 @@ export class ResearchService {
         acc[item.state] = item.count;
         return acc;
       }, {})
+    };
+  }
+
+  async getJobStats(jobId: string): Promise<{ artifacts: number; programs: number }> {
+    const [programCount] = await db
+      .select({ count: count() })
+      .from(programs)
+      .where(eq(programs.jobId, jobId));
+
+    const [artifactCount] = await db
+      .select({ count: count() })
+      .from(fetchArtifacts)
+      .where(eq(fetchArtifacts.jobId, jobId));
+
+    return {
+      programs: programCount.count,
+      artifacts: artifactCount.count
     };
   }
 
