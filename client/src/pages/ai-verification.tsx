@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle, XCircle, Clock, AlertTriangle, Sparkles, Database } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import Sidebar from "@/components/sidebar";
+import Sidebar from "@/components/layout/sidebar";
 
 export default function AIVerification() {
   const [verificationData, setVerificationData] = useState('');
@@ -20,25 +20,26 @@ export default function AIVerification() {
   // Fetch recent verification results
   const { data: recentVerifications, isLoading } = useQuery({
     queryKey: ['/api/verifications/recent'],
-    queryFn: () => apiRequest('/api/verifications/recent'),
   });
 
   // Fetch verification analytics
   const { data: analyticsData } = useQuery({
     queryKey: ['/api/analytics/summary'],
-    queryFn: () => apiRequest('/api/analytics/summary'),
   });
 
   // Verification mutation
   const verifyMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('/api/verify', {
+      const response = await fetch('/api/verify', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(data),
       });
-      return response;
+      return await response.json();
     },
-    onSuccess: (result) => {
+    onSuccess: (result: any) => {
       toast({
         title: result.verified ? "✅ Verification Passed" : "❌ Verification Failed",
         description: result.details || result.reason,
@@ -92,8 +93,8 @@ export default function AIVerification() {
     setVehicleId("TEST-12345");
   };
 
-  const verificationStats = analyticsData?.metrics || {};
-  const recentResults = recentVerifications || [];
+  const verificationStats = (analyticsData as any)?.metrics || {};
+  const recentResults = (recentVerifications as any) || [];
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -233,7 +234,7 @@ export default function AIVerification() {
                     <Clock className="h-8 w-8 mx-auto mb-2 animate-spin text-gray-400" />
                     <p className="text-gray-500">Loading verifications...</p>
                   </div>
-                ) : recentResults.length === 0 ? (
+                ) : (!recentResults || recentResults.length === 0) ? (
                   <div className="text-center py-8">
                     <Database className="h-8 w-8 mx-auto mb-2 text-gray-400" />
                     <p className="text-gray-500">No recent verifications</p>
@@ -241,7 +242,7 @@ export default function AIVerification() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {recentResults.slice(0, 10).map((verification: any, index: number) => (
+                    {(recentResults || []).slice(0, 10).map((verification: any, index: number) => (
                       <div 
                         key={index}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
