@@ -66,11 +66,14 @@ export default function VerificationPanel() {
     queryKey: ["/api/ingestion/status"],
     retry: false, // Don't retry on auth failures
     queryFn: async () => {
-      const response = await fetch("/api/ingestion/status", {
-        headers: {
-          "Authorization": "Bearer sk-1234567890abcdef" // Default token for testing
-        }
-      });
+      const token = import.meta.env.VITE_API_TOKEN;
+      const headers: HeadersInit = {};
+      
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch("/api/ingestion/status", { headers });
       if (!response.ok) {
         if (response.status === 401) return null; // Return null for auth failures
         throw new Error(`${response.status}: ${response.statusText}`);
