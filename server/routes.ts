@@ -61,22 +61,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const metrics = await storage.getComplianceMetrics();
       const { researchService } = await import("./services/research/researchService");
-      const researchStats = await researchService.getResearchStats();
+      const { changeDetector } = await import("./services/research/changeDetector");
+      
+      // Get comprehensive analytics from real database data
+      const [researchStats, jobs, changeStats] = await Promise.all([
+        researchService.getResearchStats(),
+        researchService.getJobs({}),
+        changeDetector.getChangeStatistics({})
+      ]);
+      
+      // Calculate job success rates from real data
+      const successfulJobs = jobs.filter(j => j.status === 'success').length;
+      const failedJobs = jobs.filter(j => j.status === 'error').length;
+      const runningJobs = jobs.filter(j => j.status === 'running').length;
+      const totalJobs = jobs.length;
+      const successRate = totalJobs > 0 ? Math.round((successfulJobs / totalJobs) * 100) : 100;
       
       res.json({
         metrics: {
           totalRecords: metrics.totalRecords,
           complianceRate: `${metrics.complianceRate}%`,
           failedVerifications: metrics.failedVerifications,
-          apiCalls: 0, // This would be tracked separately in a real implementation
           statePrograms: researchStats.totalPrograms,
           researchArtifacts: researchStats.totalArtifacts,
-          statesCovered: Object.keys(researchStats.programsByState).length
+          statesCovered: Object.keys(researchStats.programsByState).length,
+          // Enhanced job analytics from real data
+          totalJobs,
+          successfulJobs,
+          failedJobs,
+          runningJobs,
+          jobSuccessRate: `${successRate}%`
         },
         research: {
           programsByState: researchStats.programsByState,
           totalPrograms: researchStats.totalPrograms,
           totalArtifacts: researchStats.totalArtifacts
+        },
+        changes: {
+          totalChanges: changeStats.total,
+          changesByType: changeStats.byType,
+          newPrograms: changeStats.byType.new || 0,
+          updatedPrograms: changeStats.byType.updated || 0,
+          removedPrograms: changeStats.byType.removed || 0
         },
         authenticated: req.isAuthenticated
       });
@@ -90,8 +116,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const days = parseInt(req.query.days as string) || 30;
       const trends = await storage.getComplianceTrends(days);
+      const { researchService } = await import("./services/research/researchService");
       
-      // Format for Chart.js
+      // Get research analytics for enhanced trends
+      const researchAnalytics = await researchService.getResearchAnalytics(days);
+      
+      // Format for Chart.js with enhanced data
       const chartData = {
         compliance: {
           labels: trends.map(t => new Date(t.date).toLocaleDateString()),
@@ -100,6 +130,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         volume: {
           labels: trends.slice(-7).map(t => new Date(t.date).toLocaleDateString('en-US', { weekday: 'short' })),
           data: trends.slice(-7).map(t => t.totalCount)
+        },
+        research: {
+          programDiscovery: {
+            labels: researchAnalytics.programTrends.map((t: any) => new Date(t.date).toLocaleDateString()),
+            data: researchAnalytics.programTrends.map((t: any) => t.count)
+          },
+          dataTypeCoverage: researchAnalytics.dataTypeCoverage,
+          sourceValidation: researchAnalytics.sourceValidation
         }
       };
       
