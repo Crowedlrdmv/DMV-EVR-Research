@@ -1,7 +1,7 @@
 import { db } from '../../db';
 import { researchSchedules, insertResearchScheduleSchema, type InsertResearchSchedule, type ResearchSchedule } from '@shared/schema';
 import { eq, desc } from 'drizzle-orm';
-import parser from 'cron-parser';
+import parseExpression from 'cron-parser';
 
 export class ScheduleService {
   async createSchedule(data: any): Promise<ResearchSchedule> {
@@ -11,7 +11,7 @@ export class ScheduleService {
     // Parse and validate cron expression
     let nextRunAt: Date;
     try {
-      const interval = parser.parseExpression(validatedData.cronExpression);
+      const interval = parseExpression(validatedData.cronExpression);
       nextRunAt = interval.next().toDate();
     } catch (error) {
       throw new Error('Invalid cron expression - please check the format');
@@ -54,7 +54,7 @@ export class ScheduleService {
     let nextRunAt = existing.nextRunAt;
     if (data.cronExpression && data.cronExpression !== existing.cronExpression) {
       try {
-        const interval = parser.parseExpression(data.cronExpression);
+        const interval = parseExpression(data.cronExpression!);
         nextRunAt = interval.next().toDate();
       } catch (error) {
         throw new Error('Invalid cron expression - please check the format');
@@ -105,7 +105,7 @@ export class ScheduleService {
     if (!schedule) return;
 
     // Calculate next run time
-    const interval = parser.parseExpression(schedule.cronExpression);
+    const interval = parseExpression(schedule.cronExpression);
     const nextRunAt = interval.next().toDate();
 
     await db
@@ -131,7 +131,7 @@ export class ScheduleService {
       const jobIds = await researchService.startResearchJob({
         states: schedule.states,
         dataTypes: schedule.dataTypes,
-        depth: schedule.depth,
+        depth: schedule.depth as 'summary' | 'full',
         since: undefined
       });
       
@@ -205,7 +205,7 @@ export class ScheduleService {
   // Generate human-readable description from cron expression
   describeCron(cronExpression: string): string {
     try {
-      const interval = parser.parseExpression(cronExpression);
+      const interval = parseExpression(cronExpression);
       const fields = cronExpression.split(' ');
       
       // Basic patterns

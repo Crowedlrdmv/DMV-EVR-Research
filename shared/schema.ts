@@ -183,7 +183,8 @@ export const researchProgramChanges = pgTable("research_program_changes", {
 // Schedules
 export const researchSchedules = pgTable("research_schedules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  cron: text("cron").notNull(),
+  name: text("name").notNull(),
+  cronExpression: text("cron_expression").notNull(),
   states: text("states").array().notNull(),
   dataTypes: text("data_types").array().notNull(),
   depth: text("depth").notNull(),
@@ -191,6 +192,7 @@ export const researchSchedules = pgTable("research_schedules", {
   lastRunAt: timestamp("last_run_at"),
   nextRunAt: timestamp("next_run_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Relations
@@ -341,6 +343,7 @@ export const insertResearchProgramChangeSchema = createInsertSchema(researchProg
 export const insertResearchScheduleSchema = createInsertSchema(researchSchedules).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export const insertRequirementSchema = createInsertSchema(requirements).omit({
