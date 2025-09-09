@@ -9,6 +9,7 @@ import Exports from "@/pages/exports";
 import Research from "@/pages/research";
 import ResearchSchedulingPage from "@/pages/ResearchSchedulingPage";
 import Diagnostics from "@/pages/diagnostics";
+import AIVerification from "@/pages/ai-verification";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -21,6 +22,8 @@ function Router() {
       <Route path="/research" component={Research} />
       <Route path="/scheduling" component={ResearchSchedulingPage} />
       <Route path="/diagnostics" component={Diagnostics} />
+      <Route path="/ai-verification" component={AIVerification} />
+      <Route path="/verification" component={AIVerification} />
       <Route component={NotFound} />
     </Switch>
   );
