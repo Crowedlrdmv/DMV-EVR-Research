@@ -94,8 +94,12 @@ export class DatabaseQueueConnection implements QueueConnection {
 
     const [job] = await db.insert(researchJobs).values(jobData).returning();
     
-    // Simulate job processing in next tick
-    process.nextTick(() => this.processJob(job.id, data));
+    // Simulate job processing in next tick with normalized data
+    process.nextTick(() => this.processJob(job.id, {
+      states: jobData.states,
+      dataTypes: jobData.dataTypes,
+      depth: jobData.depth
+    }));
     
     return { id: job.id, name, data };
   }

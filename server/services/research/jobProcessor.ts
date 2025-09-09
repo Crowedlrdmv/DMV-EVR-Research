@@ -68,6 +68,9 @@ export class JobProcessor {
    * Simulates research processing with proper program deduplication
    */
   private async performResearch(jobId: string, data: any): Promise<{ programCount: number; artifactCount: number }> {
+    // Validate job data before processing
+    this.validateJobData(data);
+    
     const { states, dataTypes, depth } = data;
     
     let totalPrograms = 0;
