@@ -70,70 +70,68 @@ export const stateSources = pgTable("state_sources", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// State research pipeline tables
-export const fetchJobs = pgTable("fetch_jobs", {
+// Research jobs (core job execution tracking)
+export const researchJobs = pgTable("research_jobs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  state: varchar("state", { length: 2 }).notNull(),
-  dataTypes: jsonb("data_types").notNull(), // Array of strings
-  status: jobStatusEnum("status").default("queued").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
   startedAt: timestamp("started_at"),
   finishedAt: timestamp("finished_at"),
-  progress: integer("progress").default(0).notNull(), // Progress percentage 0-100
-  statsJson: jsonb("stats_json"),
-  errorText: text("error_text"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  states: text("states").array().notNull(), // Array of state codes
+  dataTypes: text("data_types").array().notNull(), // Array of data types
+  depth: text("depth").notNull(), // 'summary' | 'full'
+  status: text("status").notNull(), // 'queued'|'running'|'succeeded'|'failed'
+  resultCount: integer("result_count").default(0).notNull(),
+  artifactCount: integer("artifact_count").default(0).notNull(),
+  errorMessage: text("error_message"),
 }, (table) => ({
-  statusStateIdx: index("fetch_jobs_status_state_idx").on(table.status, table.state),
-  startedAtIdx: index("fetch_jobs_started_at_idx").on(table.startedAt),
+  createdAtIdx: index("research_jobs_created_at_idx").on(table.createdAt.desc()),
 }));
 
-export const fetchArtifacts = pgTable("fetch_artifacts", {
+// Canonical programs (deduped across runs)
+export const researchPrograms = pgTable("research_programs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  jobId: varchar("job_id").references(() => fetchJobs.id, { onDelete: "cascade" }).notNull(),
-  sourceId: text("source_id").notNull(),
-  url: text("url").notNull(),
-  hash: varchar("hash", { length: 64 }).notNull(), // SHA-256
-  contentType: text("content_type"),
-  filePath: text("file_path"), // Path to stored artifact file
-  fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
-  metaJson: jsonb("meta_json"),
-}, (table) => ({
-  urlHashIdx: index("fetch_artifacts_url_hash_idx").on(table.url, table.hash),
-  jobIdIdx: index("fetch_artifacts_job_id_idx").on(table.jobId),
-}));
-
-export const programs = pgTable("programs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  jobId: varchar("job_id").references(() => fetchJobs.id, { onDelete: "cascade" }),
-  state: varchar("state", { length: 2 }).notNull(),
-  type: programTypeEnum("type").notNull(),
+  stableKey: text("stable_key").notNull().unique(), // deterministic from normalized URL+title+state
+  state: text("state").notNull(),
+  type: text("type").notNull(), // rules|emissions|inspections|bulletins|forms
   title: text("title").notNull(),
-  url: text("url"),
-  effectiveDate: timestamp("effective_date"),
-  lastUpdated: timestamp("last_updated"),
   summary: text("summary"),
-  rawSourceId: varchar("raw_source_id").references(() => fetchArtifacts.id),
-  version: integer("version").default(1).notNull(),
-  validFrom: timestamp("valid_from").defaultNow().notNull(),
-  validTo: timestamp("valid_to"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  // Source validation fields
-  sourceValid: boolean("source_valid").default(true),
-  sourceReason: text("source_reason"), // "404", "malformed", etc.
-  httpStatus: integer("http_status"),
-  checkedAt: timestamp("checked_at"),
-  isDemo: boolean("is_demo").default(false).notNull(),
+  sourceUrl: text("source_url"),
+  lastUpdated: timestamp("last_updated"),
+  firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
 }, (table) => ({
-  jobIdIdx: index("programs_job_id_idx").on(table.jobId),
-  stateTypeIdx: index("programs_state_type_idx").on(table.state, table.type),
-  validFromToIdx: index("programs_valid_from_to_idx").on(table.validFrom, table.validTo),
-  sourceValidIdx: index("programs_source_valid_idx").on(table.sourceValid),
-  isDemoIdx: index("programs_is_demo_idx").on(table.isDemo),
+  stateIdx: index("research_programs_state_idx").on(table.state),
+  typeIdx: index("research_programs_type_idx").on(table.type),
+  lastSeenAtIdx: index("research_programs_last_seen_at_idx").on(table.lastSeenAt.desc()),
 }));
+
+// Results linking job -> programs
+export const researchJobResults = pgTable("research_job_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => researchJobs.id, { onDelete: "cascade" }),
+  programId: varchar("program_id").notNull().references(() => researchPrograms.id, { onDelete: "cascade" }),
+}, (table) => ({
+  jobIdIdx: index("research_job_results_job_id_idx").on(table.jobId),
+  uniqueJobProgram: index("research_job_results_unique_idx").on(table.jobId, table.programId),
+}));
+
+// Artifacts fetched during jobs
+export const researchArtifacts = pgTable("research_artifacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => researchJobs.id, { onDelete: "cascade" }),
+  programId: varchar("program_id").references(() => researchPrograms.id, { onDelete: "set null" }),
+  artifactType: text("artifact_type"), // html,pdf,json,notes
+  url: text("url"),
+  status: text("status"), // fetched|failed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  jobIdIdx: index("research_artifacts_job_id_idx").on(table.jobId),
+}));
+
 
 export const requirements = pgTable("requirements", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  programId: varchar("program_id").references(() => programs.id, { onDelete: "cascade" }).notNull(),
+  programId: varchar("program_id").references(() => researchPrograms.id, { onDelete: "cascade" }).notNull(),
   name: text("name").notNull(),
   description: text("description"),
   frequency: text("frequency"),
@@ -147,7 +145,7 @@ export const requirements = pgTable("requirements", {
 
 export const fees = pgTable("fees", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  programId: varchar("program_id").references(() => programs.id, { onDelete: "cascade" }).notNull(),
+  programId: varchar("program_id").references(() => researchPrograms.id, { onDelete: "cascade" }).notNull(),
   name: text("name").notNull(),
   amountCents: integer("amount_cents"),
   unit: text("unit"),
@@ -161,7 +159,7 @@ export const fees = pgTable("fees", {
 
 export const deadlines = pgTable("deadlines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  programId: varchar("program_id").references(() => programs.id, { onDelete: "cascade" }).notNull(),
+  programId: varchar("program_id").references(() => researchPrograms.id, { onDelete: "cascade" }).notNull(),
   label: text("label").notNull(),
   ruleJson: jsonb("rule_json").notNull(),
   sourceCitations: text("source_citations"),
@@ -170,33 +168,30 @@ export const deadlines = pgTable("deadlines", {
   programIdIdx: index("deadlines_program_id_idx").on(table.programId),
 }));
 
-export const programDeltas = pgTable("program_deltas", {
+// Changes (diffs between successive comparable runs)
+export const researchProgramChanges = pgTable("research_program_changes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  programId: varchar("program_id").references(() => programs.id, { onDelete: "cascade" }).notNull(),
-  changedAt: timestamp("changed_at").defaultNow().notNull(),
-  changeJson: jsonb("change_json").notNull(),
+  jobId: varchar("job_id").notNull().references(() => researchJobs.id, { onDelete: "cascade" }),
+  programId: varchar("program_id").references(() => researchPrograms.id),
+  changeType: text("change_type").notNull(), // added|removed|updated
+  diff: jsonb("diff"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
-  programIdIdx: index("program_deltas_program_id_idx").on(table.programId),
-  changedAtIdx: index("program_deltas_changed_at_idx").on(table.changedAt),
+  jobIdIdx: index("research_program_changes_job_id_idx").on(table.jobId),
 }));
 
+// Schedules
 export const researchSchedules = pgTable("research_schedules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  states: jsonb("states").notNull(), // Array of state codes
-  dataTypes: jsonb("data_types").notNull(), // Array of data types
-  depth: text("depth").default('summary').notNull(),
-  cronExpression: text("cron_expression").notNull(),
+  cron: text("cron").notNull(),
+  states: text("states").array().notNull(),
+  dataTypes: text("data_types").array().notNull(),
+  depth: text("depth").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   lastRunAt: timestamp("last_run_at"),
-  nextRunAt: timestamp("next_run_at").notNull(),
+  nextRunAt: timestamp("next_run_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => ({
-  isActiveIdx: index("research_schedules_is_active_idx").on(table.isActive),
-  nextRunAtIdx: index("research_schedules_next_run_at_idx").on(table.nextRunAt),
-}));
+});
 
 // Relations
 export const statesRelations = relations(states, ({ one, many }) => ({
@@ -218,60 +213,73 @@ export const stateSourcesRelations = relations(stateSources, ({ one }) => ({
   }),
 }));
 
-// State research pipeline relations
-export const fetchJobsRelations = relations(fetchJobs, ({ many }) => ({
-  artifacts: many(fetchArtifacts),
-  programs: many(programs),
+// Research pipeline relations
+export const researchJobsRelations = relations(researchJobs, ({ many }) => ({
+  results: many(researchJobResults),
+  artifacts: many(researchArtifacts),
+  changes: many(researchProgramChanges),
 }));
 
-export const fetchArtifactsRelations = relations(fetchArtifacts, ({ one, many }) => ({
-  job: one(fetchJobs, {
-    fields: [fetchArtifacts.jobId],
-    references: [fetchJobs.id],
-  }),
-  programs: many(programs),
-}));
-
-export const programsRelations = relations(programs, ({ one, many }) => ({
-  job: one(fetchJobs, {
-    fields: [programs.jobId],
-    references: [fetchJobs.id],
-  }),
-  rawSource: one(fetchArtifacts, {
-    fields: [programs.rawSourceId],
-    references: [fetchArtifacts.id],
-  }),
+export const researchProgramsRelations = relations(researchPrograms, ({ many }) => ({
+  jobResults: many(researchJobResults),
+  artifacts: many(researchArtifacts),
   requirements: many(requirements),
   fees: many(fees),
   deadlines: many(deadlines),
-  deltas: many(programDeltas),
+  changes: many(researchProgramChanges),
+}));
+
+export const researchJobResultsRelations = relations(researchJobResults, ({ one }) => ({
+  job: one(researchJobs, {
+    fields: [researchJobResults.jobId],
+    references: [researchJobs.id],
+  }),
+  program: one(researchPrograms, {
+    fields: [researchJobResults.programId],
+    references: [researchPrograms.id],
+  }),
+}));
+
+export const researchArtifactsRelations = relations(researchArtifacts, ({ one }) => ({
+  job: one(researchJobs, {
+    fields: [researchArtifacts.jobId],
+    references: [researchJobs.id],
+  }),
+  program: one(researchPrograms, {
+    fields: [researchArtifacts.programId],
+    references: [researchPrograms.id],
+  }),
+}));
+
+export const researchProgramChangesRelations = relations(researchProgramChanges, ({ one }) => ({
+  job: one(researchJobs, {
+    fields: [researchProgramChanges.jobId],
+    references: [researchJobs.id],
+  }),
+  program: one(researchPrograms, {
+    fields: [researchProgramChanges.programId],
+    references: [researchPrograms.id],
+  }),
 }));
 
 export const requirementsRelations = relations(requirements, ({ one }) => ({
-  program: one(programs, {
+  program: one(researchPrograms, {
     fields: [requirements.programId],
-    references: [programs.id],
+    references: [researchPrograms.id],
   }),
 }));
 
 export const feesRelations = relations(fees, ({ one }) => ({
-  program: one(programs, {
+  program: one(researchPrograms, {
     fields: [fees.programId],
-    references: [programs.id],
+    references: [researchPrograms.id],
   }),
 }));
 
 export const deadlinesRelations = relations(deadlines, ({ one }) => ({
-  program: one(programs, {
+  program: one(researchPrograms, {
     fields: [deadlines.programId],
-    references: [programs.id],
-  }),
-}));
-
-export const programDeltasRelations = relations(programDeltas, ({ one }) => ({
-  program: one(programs, {
-    fields: [programDeltas.programId],
-    references: [programs.id],
+    references: [researchPrograms.id],
   }),
 }));
 
@@ -304,20 +312,34 @@ export const insertStateSourcesSchema = createInsertSchema(stateSources).omit({
   updatedAt: true,
 });
 
-// State research pipeline insert schemas
-export const insertFetchJobSchema = createInsertSchema(fetchJobs).omit({
+// Research pipeline insert schemas
+export const insertResearchJobSchema = createInsertSchema(researchJobs).omit({
   id: true,
   createdAt: true,
 });
 
-export const insertFetchArtifactSchema = createInsertSchema(fetchArtifacts).omit({
+export const insertResearchProgramSchema = createInsertSchema(researchPrograms).omit({
   id: true,
-  fetchedAt: true,
+  firstSeenAt: true,
+  lastSeenAt: true,
 });
 
-export const insertProgramSchema = createInsertSchema(programs).omit({
+export const insertResearchJobResultSchema = createInsertSchema(researchJobResults).omit({
   id: true,
-  validFrom: true,
+});
+
+export const insertResearchArtifactSchema = createInsertSchema(researchArtifacts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertResearchProgramChangeSchema = createInsertSchema(researchProgramChanges).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertResearchScheduleSchema = createInsertSchema(researchSchedules).omit({
+  id: true,
   createdAt: true,
 });
 
@@ -336,18 +358,6 @@ export const insertDeadlineSchema = createInsertSchema(deadlines).omit({
   createdAt: true,
 });
 
-export const insertProgramDeltaSchema = createInsertSchema(programDeltas).omit({
-  id: true,
-  changedAt: true,
-  createdAt: true,
-});
-
-export const insertResearchScheduleSchema = createInsertSchema(researchSchedules).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -361,20 +371,22 @@ export type InsertStateResults = z.infer<typeof insertStateResultsSchema>;
 export type StateSources = typeof stateSources.$inferSelect;
 export type InsertStateSources = z.infer<typeof insertStateSourcesSchema>;
 
-// State research pipeline types
-export type FetchJob = typeof fetchJobs.$inferSelect;
-export type InsertFetchJob = z.infer<typeof insertFetchJobSchema>;
-export type FetchArtifact = typeof fetchArtifacts.$inferSelect;
-export type InsertFetchArtifact = z.infer<typeof insertFetchArtifactSchema>;
-export type Program = typeof programs.$inferSelect;
-export type InsertProgram = z.infer<typeof insertProgramSchema>;
+// Research pipeline types
+export type ResearchJob = typeof researchJobs.$inferSelect;
+export type InsertResearchJob = z.infer<typeof insertResearchJobSchema>;
+export type ResearchProgram = typeof researchPrograms.$inferSelect;
+export type InsertResearchProgram = z.infer<typeof insertResearchProgramSchema>;
+export type ResearchJobResult = typeof researchJobResults.$inferSelect;
+export type InsertResearchJobResult = z.infer<typeof insertResearchJobResultSchema>;
+export type ResearchArtifact = typeof researchArtifacts.$inferSelect;
+export type InsertResearchArtifact = z.infer<typeof insertResearchArtifactSchema>;
+export type ResearchProgramChange = typeof researchProgramChanges.$inferSelect;
+export type InsertResearchProgramChange = z.infer<typeof insertResearchProgramChangeSchema>;
+export type ResearchSchedule = typeof researchSchedules.$inferSelect;
+export type InsertResearchSchedule = z.infer<typeof insertResearchScheduleSchema>;
 export type Requirement = typeof requirements.$inferSelect;
 export type InsertRequirement = z.infer<typeof insertRequirementSchema>;
 export type Fee = typeof fees.$inferSelect;
 export type InsertFee = z.infer<typeof insertFeeSchema>;
 export type Deadline = typeof deadlines.$inferSelect;
 export type InsertDeadline = z.infer<typeof insertDeadlineSchema>;
-export type ProgramDelta = typeof programDeltas.$inferSelect;
-export type InsertProgramDelta = z.infer<typeof insertProgramDeltaSchema>;
-export type ResearchSchedule = typeof researchSchedules.$inferSelect;
-export type InsertResearchSchedule = z.infer<typeof insertResearchScheduleSchema>;
