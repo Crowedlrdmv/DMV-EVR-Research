@@ -412,6 +412,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Diagnostics endpoints
+  app.get("/api/diagnostics/health", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const startTime = Date.now();
+      
+      // Check database connectivity
+      const dbStatus = await checkDatabaseHealth();
+      
+      // Check queue status
+      const queueStatus = await checkQueueHealth();
+      
+      const responseTime = Date.now() - startTime;
+      
+      const health = {
+        api: {
+          status: "healthy",
+          responseTime
+        },
+        database: dbStatus,
+        queue: queueStatus,
+        storage: {
+          type: "PostgreSQL",
+          usage: "Active"
+        }
+      };
+      
+      res.json(health);
+    } catch (error) {
+      console.error("Error fetching system health:", error);
+      res.status(500).json({ error: "Failed to fetch system health" });
+    }
+  });
+
+  app.get("/api/diagnostics/activity", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { researchService } = await import("./services/research/researchService");
+      
+      // Get recent jobs as activity
+      const recentJobs = await researchService.getJobs({});
+      
+      const activity = recentJobs.slice(0, 20).map(job => ({
+        timestamp: job.startedAt,
+        type: 'job',
+        level: job.status === 'error' ? 'error' : job.status === 'running' ? 'info' : 'success',
+        message: `Research job ${job.status} for ${job.states.join(', ')}`,
+        details: job.errorText || `Data types: ${job.dataTypes.join(', ')}`
+      }));
+      
+      res.json(activity);
+    } catch (error) {
+      console.error("Error fetching system activity:", error);
+      res.status(500).json({ error: "Failed to fetch system activity" });
+    }
+  });
+
   // Research schedule endpoints
   app.get("/api/research/schedules", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
     try {
@@ -472,6 +527,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to delete research schedule" });
     }
   });
+
+  // Helper functions for diagnostics
+  async function checkDatabaseHealth() {
+    try {
+      const { db } = await import("./db");
+      const { sql } = await import("drizzle-orm");
+      await db.execute(sql`SELECT 1`);
+      return {
+        status: "connected",
+        connectionCount: 1
+      };
+    } catch (error) {
+      return {
+        status: "error",
+        connectionCount: 0
+      };
+    }
+  }
+
+  async function checkQueueHealth() {
+    try {
+      const { queueConnection } = await import("./queue/connection");
+      const queueStats = await queueConnection.getWaiting();
+      const activeJobs = await queueConnection.getActive();
+      const completedJobs = await queueConnection.getCompleted();
+      const failedJobs = await queueConnection.getFailed();
+
+      return {
+        status: "connected", 
+        type: "Database Fallback",
+        jobs: {
+          waiting: queueStats.length,
+          active: activeJobs.length,
+          completed: completedJobs.length,
+          failed: failedJobs.length
+        }
+      };
+    } catch (error) {
+      return {
+        status: "error",
+        type: "Unavailable",
+        jobs: {
+          waiting: 0,
+          active: 0,
+          completed: 0,
+          failed: 0
+        }
+      };
+    }
+  }
 
   const httpServer = createServer(app);
   return httpServer;

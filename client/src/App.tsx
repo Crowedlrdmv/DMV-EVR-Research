@@ -8,6 +8,7 @@ import Analytics from "@/pages/analytics";
 import Exports from "@/pages/exports";
 import Research from "@/pages/research";
 import ResearchSchedulingPage from "@/pages/ResearchSchedulingPage";
+import Diagnostics from "@/pages/diagnostics";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/exports" component={Exports} />
       <Route path="/research" component={Research} />
       <Route path="/scheduling" component={ResearchSchedulingPage} />
+      <Route path="/diagnostics" component={Diagnostics} />
       <Route component={NotFound} />
     </Switch>
   );

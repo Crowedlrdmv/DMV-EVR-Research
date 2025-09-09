@@ -87,6 +87,18 @@ export default function Sidebar() {
             <i className="fas fa-calendar-alt w-4"></i>
             <span>Scheduling</span>
           </Link>
+          <Link 
+            href="/diagnostics" 
+            className={`flex items-center space-x-3 px-3 py-2 rounded-md font-medium transition-colors ${
+              location === "/diagnostics"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            }`}
+            data-testid="sidebar-diagnostics"
+          >
+            <i className="fas fa-stethoscope w-4"></i>
+            <span>Diagnostics</span>
+          </Link>
         </nav>
 
         {/* Database Status */}
