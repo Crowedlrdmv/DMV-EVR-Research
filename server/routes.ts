@@ -291,7 +291,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/states", listStatesHandler);
 
   // Research pipeline endpoints
-  app.post("/api/research/run", requireBearerToken, async (req: AuthenticatedRequest, res) => {
+  // POST /api/research/jobs - Start new research job (matches expected contract)
+  app.post("/api/research/jobs", requireBearerToken, async (req: AuthenticatedRequest, res) => {
     try {
       const { researchService } = await import("./services/research/researchService");
       const { states, dataTypes, depth = 'summary', since } = req.body;

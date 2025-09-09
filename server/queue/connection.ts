@@ -8,6 +8,10 @@ export interface QueueConnection {
   addJob(name: string, data: any, options?: any): Promise<any>;
   getJob(id: string): Promise<any>;
   getJobs(statuses: string[]): Promise<any[]>;
+  getWaiting(): Promise<any[]>;
+  getActive(): Promise<any[]>;
+  getCompleted(): Promise<any[]>;
+  getFailed(): Promise<any[]>;
   close(): Promise<void>;
 }
 
@@ -42,6 +46,22 @@ export class RedisQueueConnection implements QueueConnection {
       jobs.push(...statusJobs);
     }
     return jobs;
+  }
+
+  async getWaiting(): Promise<any[]> {
+    return await this.queue.getJobs(['waiting'], 0, 100);
+  }
+
+  async getActive(): Promise<any[]> {
+    return await this.queue.getJobs(['active'], 0, 100);
+  }
+
+  async getCompleted(): Promise<any[]> {
+    return await this.queue.getJobs(['completed'], 0, 100);
+  }
+
+  async getFailed(): Promise<any[]> {
+    return await this.queue.getJobs(['failed'], 0, 100);
   }
 
   async close(): Promise<void> {
@@ -111,6 +131,22 @@ export class DatabaseQueueConnection implements QueueConnection {
         progress: job.status === 'succeeded' ? 100 : job.status === 'running' ? 50 : 0,
       }))
       .sort((a, b) => (b.finishedOn || b.processedOn || 0) - (a.finishedOn || a.processedOn || 0)); // Sort by most recent first
+  }
+
+  async getWaiting(): Promise<any[]> {
+    return await this.getJobs(['waiting']);
+  }
+
+  async getActive(): Promise<any[]> {
+    return await this.getJobs(['active']);
+  }
+
+  async getCompleted(): Promise<any[]> {
+    return await this.getJobs(['completed']);
+  }
+
+  async getFailed(): Promise<any[]> {
+    return await this.getJobs(['failed']);
   }
 
   async close(): Promise<void> {
