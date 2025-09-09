@@ -318,11 +318,7 @@ export const researchApi = {
 
   createSchedule: async (payload: CreateSchedulePayload): Promise<ResearchSchedule | null> => {
     try {
-      const response = await apiRequest('/api/research/schedules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const response = await apiRequest('POST', '/api/research/schedules', payload, getBearerToken());
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || `Failed to create schedule: ${response.statusText}`);
@@ -342,11 +338,7 @@ export const researchApi = {
 
   updateSchedule: async (id: string, payload: Partial<CreateSchedulePayload>): Promise<ResearchSchedule | null> => {
     try {
-      const response = await apiRequest(`/api/research/schedules/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const response = await apiRequest('PUT', `/api/research/schedules/${id}`, payload, getBearerToken());
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || `Failed to update schedule: ${response.statusText}`);
@@ -366,9 +358,7 @@ export const researchApi = {
 
   deleteSchedule: async (id: string): Promise<boolean> => {
     try {
-      const response = await apiRequest(`/api/research/schedules/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await apiRequest('DELETE', `/api/research/schedules/${id}`, undefined, getBearerToken());
       if (!response.ok) {
         throw new Error(`Failed to delete schedule: ${response.statusText}`);
       }
