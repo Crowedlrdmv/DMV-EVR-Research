@@ -199,15 +199,21 @@ export class ChangeDetector {
     byProgram: Record<string, number>;
   }> {
     
-    let query = db.select().from(researchProgramChanges);
+    const conditions: any[] = [];
     
-    // Apply filters
+    // Build filter conditions
     if (filters?.jobId) {
-      query = query.where(eq(researchProgramChanges.jobId, filters.jobId)) as any;
+      conditions.push(eq(researchProgramChanges.jobId, filters.jobId));
     }
     
     if (filters?.changeType) {
-      query = query.where(eq(researchProgramChanges.changeType, filters.changeType)) as any;
+      conditions.push(eq(researchProgramChanges.changeType, filters.changeType));
+    }
+    
+    // Build query with proper where conditions
+    let query = db.select().from(researchProgramChanges);
+    if (conditions.length > 0) {
+      query = query.where(conditions.length === 1 ? conditions[0] : and(...conditions));
     }
     
     const allChanges = await query;

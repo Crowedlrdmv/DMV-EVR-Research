@@ -111,23 +111,23 @@ export class ResearchService {
     // Build base query
     let query = db
       .select({
-        id: programs.id,
-        jobId: programs.jobId,
-        state: programs.state,
-        type: programs.type,
-        title: programs.title,
-        url: programs.url,
-        summary: programs.summary,
-        lastUpdated: programs.lastUpdated,
-        createdAt: programs.createdAt,
-        sourceValid: programs.sourceValid,
-        sourceReason: programs.sourceReason,
-        httpStatus: programs.httpStatus,
-        checkedAt: programs.checkedAt,
-        isDemo: programs.isDemo
+        id: researchPrograms.id,
+        jobId: researchPrograms.stableKey, // Using stableKey as jobId for now
+        state: researchPrograms.state,
+        type: researchPrograms.type,
+        title: researchPrograms.title,
+        url: researchPrograms.sourceUrl,
+        summary: researchPrograms.summary,
+        lastUpdated: researchPrograms.lastUpdated,
+        createdAt: researchPrograms.firstSeenAt,
+        sourceValid: null, // These fields don't exist in researchPrograms
+        sourceReason: null,
+        httpStatus: null,
+        checkedAt: null,
+        isDemo: null
       })
-      .from(programs)
-      .orderBy(desc(programs.createdAt))
+      .from(researchPrograms)
+      .orderBy(desc(researchPrograms.firstSeenAt))
       .limit(100);
 
     // Execute query and filter in memory for simplicity
@@ -153,23 +153,23 @@ export class ResearchService {
     // Get programs in date range with their creation and update timestamps
     let query = db
       .select({
-        id: programs.id,
-        title: programs.title,
-        url: programs.url,
-        state: programs.state,
-        type: programs.type,
-        jobId: programs.jobId,
-        createdAt: programs.createdAt,
-        lastUpdated: programs.lastUpdated,
+        id: researchPrograms.id,
+        title: researchPrograms.title,
+        url: researchPrograms.sourceUrl,
+        state: researchPrograms.state,
+        type: researchPrograms.type,
+        jobId: researchPrograms.stableKey, // Using stableKey as jobId
+        createdAt: researchPrograms.firstSeenAt,
+        lastUpdated: researchPrograms.lastUpdated,
       })
-      .from(programs)
-      .where(gte(programs.createdAt, cutoffDate))
-      .orderBy(desc(programs.createdAt));
+      .from(researchPrograms)
+      .where(gte(researchPrograms.firstSeenAt, cutoffDate))
+      .orderBy(desc(researchPrograms.firstSeenAt));
 
     if (filters.state) {
       query = query.where(and(
-        gte(programs.createdAt, cutoffDate),
-        eq(programs.state, filters.state.toUpperCase())
+        gte(researchPrograms.firstSeenAt, cutoffDate),
+        eq(researchPrograms.state, filters.state.toUpperCase())
       ));
     }
 
@@ -286,12 +286,12 @@ export class ResearchService {
     // Get unique sources by state from actual artifacts in the database
     const uniqueSources = await db
       .selectDistinct({
-        state: fetchArtifacts.sourceId,
-        url: fetchArtifacts.url,
-        contentType: fetchArtifacts.contentType
+        state: researchArtifacts.id, // Using id as sourceId placeholder
+        url: researchArtifacts.url,
+        contentType: researchArtifacts.artifactType
       })
-      .from(fetchArtifacts)
-      .orderBy(fetchArtifacts.sourceId);
+      .from(researchArtifacts)
+      .orderBy(researchArtifacts.id);
 
     // Group by state and create source objects
     const sourcesByState: Record<string, any[]> = {};
@@ -317,10 +317,11 @@ export class ResearchService {
   }
 
   async getJobStats(jobId: string): Promise<{ artifacts: number; programs: number }> {
+    // Note: researchPrograms doesn't have jobId field, using stableKey for now
     const [programCount] = await db
       .select({ count: count() })
       .from(researchPrograms)
-      .where(eq(researchPrograms.jobId, jobId));
+      .where(eq(researchPrograms.stableKey, jobId));
 
     const [artifactCount] = await db
       .select({ count: count() })

@@ -141,7 +141,7 @@ export const researchApi = {
     }
     
     try {
-      const response = await apiRequest('POST', '/api/research/run', payload, getBearerToken());
+      const response = await apiRequest('POST', '/api/research/jobs', payload, getBearerToken());
       const result = await response.json();
       
       // Handle specific error cases
