@@ -178,6 +178,23 @@ export const programDeltas = pgTable("program_deltas", {
   changedAtIdx: index("program_deltas_changed_at_idx").on(table.changedAt),
 }));
 
+export const researchSchedules = pgTable("research_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  states: jsonb("states").notNull(), // Array of state codes
+  dataTypes: jsonb("data_types").notNull(), // Array of data types
+  depth: text("depth").default('summary').notNull(),
+  cronExpression: text("cron_expression").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  lastRunAt: timestamp("last_run_at"),
+  nextRunAt: timestamp("next_run_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  isActiveIdx: index("research_schedules_is_active_idx").on(table.isActive),
+  nextRunAtIdx: index("research_schedules_next_run_at_idx").on(table.nextRunAt),
+}));
+
 // Relations
 export const statesRelations = relations(states, ({ one, many }) => ({
   results: one(stateResults),
@@ -317,6 +334,12 @@ export const insertProgramDeltaSchema = createInsertSchema(programDeltas).omit({
   createdAt: true,
 });
 
+export const insertResearchScheduleSchema = createInsertSchema(researchSchedules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -345,3 +368,5 @@ export type Deadline = typeof deadlines.$inferSelect;
 export type InsertDeadline = z.infer<typeof insertDeadlineSchema>;
 export type ProgramDelta = typeof programDeltas.$inferSelect;
 export type InsertProgramDelta = z.infer<typeof insertProgramDeltaSchema>;
+export type ResearchSchedule = typeof researchSchedules.$inferSelect;
+export type InsertResearchSchedule = z.infer<typeof insertResearchScheduleSchema>;

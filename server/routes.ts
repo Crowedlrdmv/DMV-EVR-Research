@@ -409,6 +409,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Research schedule endpoints
+  app.get("/api/research/schedules", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { scheduleService } = await import("./services/research/scheduleService");
+      const schedules = await scheduleService.getSchedules();
+      res.json({ schedules });
+    } catch (error) {
+      console.error("Error fetching research schedules:", error);
+      res.status(500).json({ error: "Failed to fetch research schedules" });
+    }
+  });
+
+  app.post("/api/research/schedules", requireBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { scheduleService } = await import("./services/research/scheduleService");
+      const schedule = await scheduleService.createSchedule(req.body);
+      res.status(201).json({ schedule });
+    } catch (error) {
+      console.error("Error creating research schedule:", error);
+      if (error instanceof Error && error.message.includes('validation')) {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to create research schedule" });
+    }
+  });
+
+  app.put("/api/research/schedules/:id", requireBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { scheduleService } = await import("./services/research/scheduleService");
+      const schedule = await scheduleService.updateSchedule(req.params.id, req.body);
+      
+      if (!schedule) {
+        return res.status(404).json({ error: "Schedule not found" });
+      }
+      
+      res.json({ schedule });
+    } catch (error) {
+      console.error("Error updating research schedule:", error);
+      if (error instanceof Error && error.message.includes('validation')) {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to update research schedule" });
+    }
+  });
+
+  app.delete("/api/research/schedules/:id", requireBearerToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { scheduleService } = await import("./services/research/scheduleService");
+      const deleted = await scheduleService.deleteSchedule(req.params.id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Schedule not found" });
+      }
+      
+      res.json({ message: "Schedule deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting research schedule:", error);
+      res.status(500).json({ error: "Failed to delete research schedule" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
