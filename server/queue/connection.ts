@@ -23,8 +23,20 @@ export class RedisQueueConnection implements QueueConnection {
   constructor() {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     this.redis = new IORedis(redisUrl, {
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: 1,
       lazyConnect: true,
+      enableReadyCheck: false,
+      connectTimeout: 5000,
+      commandTimeout: 5000,
+    });
+
+    // Suppress Redis connection error logs
+    this.redis.on('error', (err) => {
+      // Silently handle Redis connection errors since we have a fallback
+    });
+
+    this.redis.on('connect', () => {
+      console.log('✓ Redis queue connection established');
     });
     
     this.queue = new Queue('research-queue', { connection: this.redis });
@@ -186,7 +198,34 @@ export class DatabaseQueueConnection implements QueueConnection {
 }
 
 // Create queue connection with Redis fallback
+async function isRedisAvailable(): Promise<boolean> {
+  try {
+    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+    const testClient = new IORedis(redisUrl, {
+      maxRetriesPerRequest: 0,
+      lazyConnect: true,
+      connectTimeout: 1000,
+    });
+    
+    // Suppress error logs for test connection
+    testClient.on('error', () => {});
+    
+    await testClient.ping();
+    await testClient.quit();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function createQueueConnection(): Promise<QueueConnection> {
+  const redisAvailable = await isRedisAvailable();
+  
+  if (!redisAvailable) {
+    console.log('✗ Redis unavailable, using database queue');
+    return new DatabaseQueueConnection();
+  }
+
   try {
     const redisConnection = new RedisQueueConnection();
     // Test Redis connection
@@ -194,7 +233,7 @@ export async function createQueueConnection(): Promise<QueueConnection> {
     console.log('✓ Connected to Redis for queue');
     return redisConnection;
   } catch (error) {
-    console.log('✗ Redis unavailable, falling back to database queue');
+    console.log('✗ Redis connection failed, falling back to database queue');
     return new DatabaseQueueConnection();
   }
 }
