@@ -196,11 +196,12 @@ export const researchApi = {
   },
 
   // Get research results
-  getResults: async (params?: { state?: string; type?: string }): Promise<ResearchProgram[]> => {
+  getResults: async (params?: { state?: string; type?: string; jobId?: string }): Promise<ResearchProgram[]> => {
     try {
       const searchParams = new URLSearchParams();
       if (params?.state) searchParams.set('state', params.state);
       if (params?.type) searchParams.set('type', params.type);
+      if (params?.jobId) searchParams.set('jobId', params.jobId);
       
       const url = `/api/research/results${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
       const response = await fetchWithRetry(url);

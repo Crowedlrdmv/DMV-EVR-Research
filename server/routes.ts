@@ -357,11 +357,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/research/results", optionalBearerToken, async (req: AuthenticatedRequest, res) => {
     try {
       const { researchService } = await import("./services/research/researchService");
-      const { state, since } = req.query;
+      const { state, since, jobId } = req.query;
       
       const results = await researchService.getResearchResults({
         state: state as string,
-        since: since as string
+        since: since as string,
+        jobId: jobId as string
       });
 
       res.json({ results });

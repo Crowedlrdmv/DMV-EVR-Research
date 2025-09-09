@@ -92,37 +92,45 @@ export class ResearchService {
     };
   }
 
-  async getResearchResults(filters: { state?: string; since?: string } = {}) {
-    if (filters.state) {
-      return await db.select({
-        id: programs.id,
-        state: programs.state,
-        type: programs.type,
-        title: programs.title,
-        url: programs.url,
-        summary: programs.summary,
-        lastUpdated: programs.lastUpdated,
-        createdAt: programs.createdAt
-      })
-      .from(programs)
-      .where(eq(programs.state, filters.state.toUpperCase()))
-      .orderBy(desc(programs.createdAt))
-      .limit(100);
-    }
-
-    return await db.select({
+  async getResearchResults(filters: { state?: string; since?: string; jobId?: string } = {}) {
+    const baseSelect = {
       id: programs.id,
+      jobId: programs.jobId,
       state: programs.state,
       type: programs.type,
       title: programs.title,
       url: programs.url,
       summary: programs.summary,
       lastUpdated: programs.lastUpdated,
-      createdAt: programs.createdAt
-    })
-    .from(programs)
-    .orderBy(desc(programs.createdAt))
-    .limit(100);
+      createdAt: programs.createdAt,
+      sourceValid: programs.sourceValid,
+      sourceReason: programs.sourceReason,
+      httpStatus: programs.httpStatus,
+      checkedAt: programs.checkedAt,
+      isDemo: programs.isDemo
+    };
+
+    let query = db.select(baseSelect).from(programs);
+
+    // Build where conditions
+    const whereConditions = [];
+    
+    if (filters.jobId) {
+      whereConditions.push(eq(programs.jobId, filters.jobId));
+    }
+    
+    if (filters.state) {
+      whereConditions.push(eq(programs.state, filters.state.toUpperCase()));
+    }
+    
+    // Apply where conditions if any exist
+    if (whereConditions.length > 0) {
+      query = query.where(whereConditions.length === 1 ? whereConditions[0] : and(...whereConditions));
+    }
+
+    return await query
+      .orderBy(desc(programs.createdAt))
+      .limit(100);
   }
 
   async getResearchDeltas(filters: { state?: string; since?: string } = {}) {

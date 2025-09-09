@@ -1,22 +1,34 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { researchApi, getTypeColor, type ResearchProgram, asArray } from "@/lib/researchApi";
+import { researchApi, getTypeColor, type ResearchProgram, type ResearchJob, asArray } from "@/lib/researchApi";
 
 export default function ResearchResultsTable() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string>("");
 
-  // Fetch all results
+  // Fetch jobs for the dropdown
+  const { data: jobs } = useQuery({
+    queryKey: ['/api/research/jobs'],
+    queryFn: researchApi.getJobs,
+    refetchInterval: 3000, // Poll for job updates
+  });
+
+  // Fetch results based on selected job
   const { data: allResults, isLoading } = useQuery({
-    queryKey: ['/api/research/results'],
-    queryFn: () => researchApi.getResults(),
+    queryKey: ['/api/research/results', selectedJobId],
+    queryFn: () => researchApi.getResults({ 
+      jobId: (selectedJobId && selectedJobId !== 'all') ? selectedJobId : undefined 
+    }),
+    enabled: true, // Always enabled, but will show all results when no job selected
   });
 
   // Memoized filtering logic with safe array handling
@@ -160,7 +172,17 @@ export default function ResearchResultsTable() {
     setSearchQuery("");
     setSelectedStates([]);
     setSelectedTypes([]);
+    setSelectedJobId("");
   };
+
+  // Get unique job options with safe array handling
+  const availableJobs = useMemo(() => {
+    const safeJobs = asArray<ResearchJob>(jobs, 'jobs');
+    if (safeJobs.length === 0) return [];
+    return safeJobs
+      .filter(job => job.status === 'success') // Only show completed jobs
+      .sort((a, b) => new Date(b.finishedAt || b.startedAt || 0).getTime() - new Date(a.finishedAt || a.startedAt || 0).getTime());
+  }, [jobs]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -180,10 +202,57 @@ export default function ResearchResultsTable() {
 
   return (
     <div className="space-y-4">
+      {/* Job-Specific Results Header */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <i className="fas fa-table text-lg"></i>
+            Research Results
+            {selectedJobId && (
+              <Badge variant="outline" className="ml-2">
+                Job-Specific Results
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+      </Card>
+
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
           <div className="space-y-4">
+            {/* Job Selector */}
+            {availableJobs.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Filter by Research Job</label>
+                <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                  <SelectTrigger data-testid="select-job-filter">
+                    <SelectValue placeholder="Show all results (from all jobs)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Jobs</SelectItem>
+                    {availableJobs.map((job) => (
+                      <SelectItem key={job.id} value={job.id}>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="outline" className="text-xs font-mono">
+                            {Array.isArray(job.states) ? job.states.join(', ') : job.states || 'Unknown'}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {job.finishedAt ? formatDate(job.finishedAt) : 'Recently completed'}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedJobId && (
+                  <div className="text-xs text-muted-foreground">
+                    Showing results only from the selected research job
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Search Input */}
             <div className="relative">
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
