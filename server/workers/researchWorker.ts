@@ -48,6 +48,7 @@ export async function processResearchJob(jobId: string, data: ResearchJobData): 
     // Create normalized program from dummy content
     for (const dataType of data.dataTypes) {
       const programData = insertProgramSchema.parse({
+        jobId, // Link program to the research job
         state: data.state,
         type: dataType as any,
         title: `${data.state} ${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Program`,
@@ -70,6 +71,7 @@ export async function processResearchJob(jobId: string, data: ResearchJobData): 
     if (data.dataTypes.includes('emissions')) {
       // Add a broken link example
       const brokenLinkProgram = insertProgramSchema.parse({
+        jobId, // Link program to the research job
         state: data.state,
         type: 'emissions',
         title: `${data.state} Legacy Emissions System`,
