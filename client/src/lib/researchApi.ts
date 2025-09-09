@@ -25,12 +25,18 @@ export interface ResearchJob {
 
 export interface ResearchProgram {
   id: string;
+  jobId?: string;        // Links to research job
   state: string;         // 'CA'
   type: 'rules'|'emissions'|'inspections'|'bulletins'|'forms';
   title: string;
-  url: string;
+  url?: string;
+  effectiveDate?: string;
+  lastUpdated?: string;
   summary?: string;
-  lastUpdated: string;
+  rawSourceId?: string;
+  version?: number;
+  validFrom?: string;
+  validTo?: string;
   createdAt: string;
   // Source validation fields
   sourceValid?: boolean;

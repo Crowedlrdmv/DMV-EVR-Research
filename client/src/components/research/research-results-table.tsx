@@ -8,12 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { researchApi, getTypeColor, type ResearchProgram, type ResearchJob, asArray } from "@/lib/researchApi";
+import ProgramDetailModal from "./program-detail-modal";
 
 export default function ResearchResultsTable() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
+  const [selectedProgram, setSelectedProgram] = useState<ResearchProgram | null>(null);
+  const [showProgramModal, setShowProgramModal] = useState(false);
 
   // Fetch jobs for the dropdown
   const { data: jobs } = useQuery({
@@ -173,6 +176,11 @@ export default function ResearchResultsTable() {
     setSelectedStates([]);
     setSelectedTypes([]);
     setSelectedJobId("");
+  };
+
+  const handleProgramClick = (program: ResearchProgram) => {
+    setSelectedProgram(program);
+    setShowProgramModal(true);
   };
 
   // Get unique job options with safe array handling
@@ -372,7 +380,12 @@ export default function ResearchResultsTable() {
                 </TableHeader>
                 <TableBody>
                   {filteredResults.map((result) => (
-                    <TableRow key={result.id} data-testid={`result-row-${result.id}`}>
+                    <TableRow 
+                      key={result.id} 
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => handleProgramClick(result)}
+                      data-testid={`result-row-${result.id}`}
+                    >
                       <TableCell>
                         <Badge variant="outline" className="font-mono">
                           {result.state}
@@ -405,6 +418,13 @@ export default function ResearchResultsTable() {
           )}
         </CardContent>
       </Card>
+
+      {/* Program Detail Modal */}
+      <ProgramDetailModal
+        program={selectedProgram}
+        open={showProgramModal}
+        onOpenChange={setShowProgramModal}
+      />
     </div>
   );
 }
