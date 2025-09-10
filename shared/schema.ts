@@ -16,7 +16,6 @@ export const users = pgTable("users", {
 
 export const complianceRecords = pgTable("compliance_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  vehicleId: text("vehicle_id").notNull(),
   complianceStatus: text("compliance_status").notNull(),
   expiryDate: timestamp("expiry_date"),
   verificationTimestamp: timestamp("verification_timestamp").defaultNow().notNull(),
