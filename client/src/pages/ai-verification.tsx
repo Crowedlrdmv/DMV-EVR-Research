@@ -14,7 +14,6 @@ import Sidebar from "@/components/layout/sidebar";
 
 export default function AIVerification() {
   const [verificationData, setVerificationData] = useState('');
-  const [vehicleId, setVehicleId] = useState('');
   const { toast } = useToast();
 
   // Fetch recent verification results
@@ -67,9 +66,6 @@ export default function AIVerification() {
 
     try {
       const data = JSON.parse(verificationData);
-      if (vehicleId) {
-        data.vehicle_id = vehicleId;
-      }
       verifyMutation.mutate(data);
     } catch (error) {
       toast({
@@ -82,7 +78,6 @@ export default function AIVerification() {
 
   const handleQuickTest = () => {
     const testData = {
-      vehicle_id: "TEST-12345",
       compliance_type: "emissions",
       state: "CA",
       expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
@@ -90,7 +85,6 @@ export default function AIVerification() {
       inspector_id: "INS-001"
     };
     setVerificationData(JSON.stringify(testData, null, 2));
-    setVehicleId("TEST-12345");
   };
 
   const verificationStats = (analyticsData as any)?.metrics || {};
@@ -169,16 +163,6 @@ export default function AIVerification() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="vehicle-id">Vehicle ID (optional)</Label>
-                  <Input
-                    id="vehicle-id"
-                    placeholder="Enter vehicle ID"
-                    value={vehicleId}
-                    onChange={(e) => setVehicleId(e.target.value)}
-                    data-testid="input-vehicle-id"
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="verification-data">Compliance Data (JSON)</Label>
                   <Textarea
                     id="verification-data"
@@ -256,7 +240,7 @@ export default function AIVerification() {
                           )}
                           <div>
                             <p className="font-medium">
-                              {verification.vehicleId || 'Unknown Vehicle'}
+                              Verification Result
                             </p>
                             <p className="text-sm text-gray-600">
                               {verification.details || verification.reason}
@@ -293,7 +277,6 @@ export default function AIVerification() {
                   <p>The verification system accepts JSON data with the following structure:</p>
                   <div className="bg-gray-100 p-4 rounded-md font-mono text-sm">
                     {JSON.stringify({
-                      vehicle_id: "string (optional)",
                       compliance_type: "emissions | inspections | registration",
                       state: "string (state code)",
                       expiry_date: "ISO string date",
@@ -308,7 +291,6 @@ export default function AIVerification() {
                     <li>All required fields must be present and valid</li>
                     <li>State codes must be valid US state abbreviations</li>
                     <li>Test results must be either "PASS" or "FAIL"</li>
-                    <li>Vehicle IDs help track compliance history</li>
                   </ul>
                 </TabsContent>
                 <TabsContent value="examples" className="space-y-3">
@@ -317,7 +299,6 @@ export default function AIVerification() {
                       <h4 className="font-medium mb-2 text-green-600">✅ Valid Example</h4>
                       <div className="bg-green-50 p-3 rounded-md font-mono text-sm">
                         {JSON.stringify({
-                          vehicle_id: "ABC123",
                           compliance_type: "emissions",
                           state: "CA",
                           expiry_date: "2025-12-31T00:00:00Z",
@@ -329,7 +310,6 @@ export default function AIVerification() {
                       <h4 className="font-medium mb-2 text-red-600">❌ Invalid Example</h4>
                       <div className="bg-red-50 p-3 rounded-md font-mono text-sm">
                         {JSON.stringify({
-                          vehicle_id: "XYZ789",
                           compliance_type: "emissions",
                           state: "CA",
                           expiry_date: "2023-01-01T00:00:00Z", // Expired
